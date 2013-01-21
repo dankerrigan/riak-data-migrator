@@ -8,12 +8,13 @@ back into another Riak K/V host or cluster.
 Building:
 ------------------------
 Using Maven:
-'mvn package' builds the project and creates a distributable tarball
+```mvn package```
+Builds the project and creates a distributable tarball
 in the target/ directory
 
 Usage:
 ------------------------
-See the README file in the root of the proejct.  This file is also
+See the README file in the root of the project.  This file is also
 packaged in the distribable tarball.
 
 Caveats:
