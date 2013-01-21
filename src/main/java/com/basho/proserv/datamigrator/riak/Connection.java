@@ -59,7 +59,7 @@ public class Connection {
 		return httpClusterConfig;
 	}
 	
-	public boolean connectPBCluster(List<String> hosts, int port) {
+	public boolean connectHTTPCluster(List<String> hosts, int port) {
 		boolean success = false;
 		HTTPClusterConfig clusterConfig = createHttpClusterConfig(hosts, port);
 		try {
@@ -70,7 +70,7 @@ public class Connection {
 		}
 		return success;
 	}
-	public boolean connectHTTPCluster(List<String> hosts, int port) {
+	public boolean connectPBCluster(List<String> hosts, int port) {
 		boolean success = false;
 		PBClusterConfig clusterConfig = createPbClusterConfig(hosts, port);
 		try {
