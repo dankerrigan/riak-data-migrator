@@ -42,8 +42,11 @@ Load all buckets previously dumped back into Riak:
 ```java -jar riak-data-migrator-0.1.jar -l -r /var/riak-export -a -h 127.0.0.1 -p 8087```
 
 Dump buckets listed in a line delimited file from a Riak cluster:  
-```java -jar riak-data-migrator-0.1.jar -d -f /home/riakadmin/buckets_to_export.txt -r \  
-/var/riak-export -c /home/riakadmin/riak_hosts.txt -p 8087```
+
+<pre>
+java -jar riak-data-migrator-0.1.jar -d -f /home/riakadmin/buckets_to_export.txt -r \  
+/var/riak-export -c /home/riakadmin/riak_hosts.txt -p 8087
+</pre>
 
 Caveats:
 ------------------------
@@ -51,5 +54,5 @@ Caveats:
 is slow on a good day.  
 -The Riak memory backend bucket listing operating tends to timeout if
 any significant amount of data exists.  In this case, you have to
-use explicitly specify the buckets you need want to dump using the -f
+explicitly specify the buckets you need want to dump using the -f
 option to specify a line-delimited list of buckets in a file.  
