@@ -42,7 +42,7 @@ Load all buckets previously dumped back into Riak:
 ```java -jar riak-data-migrator-0.1.jar -l -r /var/riak-export -a -h 127.0.0.1 -p 8087```
 
 Dump buckets listed in a line delimited file from a Riak cluster:  
-```java -jar riak-data-migrator-0.1.jar -d -f /home/riakadmin/buckets_to_export.txt -r \
+```java -jar riak-data-migrator-0.1.jar -d -f /home/riakadmin/buckets_to_export.txt -r \  
 /var/riak-export -c /home/riakadmin/riak_hosts.txt -p 8087```
 
 Caveats:
