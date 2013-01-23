@@ -1,5 +1,6 @@
 package com.basho.proserv.datamigrator.io;
 
+import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.File;
@@ -14,7 +15,7 @@ import com.basho.riak.pbc.RiakObject;
 import com.basho.riak.pbc.RiakObjectIO;
 import com.google.protobuf.InvalidProtocolBufferException;
 
-public class RiakObjectReader {
+public class RiakObjectReader implements IRiakObjectReader{
 	private final Logger log = LoggerFactory.getLogger(RiakObjectReader.class);
 	private final RiakObjectIO riakObjectIo = new RiakObjectIO();
 	private DataInputStream dataInputStream = null;
@@ -22,7 +23,7 @@ public class RiakObjectReader {
 	
 	public RiakObjectReader(File inputFile) {
 		try {
-			dataInputStream = new DataInputStream(new FileInputStream(inputFile));
+			dataInputStream = new DataInputStream(new BufferedInputStream(new FileInputStream(inputFile)));
 		} catch (FileNotFoundException e) {
 			throw new IllegalArgumentException("File could not be found " + inputFile.getAbsolutePath());
 		}
