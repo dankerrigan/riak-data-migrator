@@ -8,21 +8,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.basho.proserv.datamigrator.io.RiakObjectBucket;
+import com.basho.proserv.datamigrator.riak.AbstractClientDataReader;
+import com.basho.proserv.datamigrator.riak.ClientReaderFactory;
 import com.basho.proserv.datamigrator.riak.Connection;
-import com.basho.riak.client.IRiakObject;
-import com.basho.riak.client.raw.RawClient;
-import com.basho.riak.client.raw.RiakResponse;
-
-import static com.basho.riak.client.raw.pbc.ConversionUtilWrapper.convertInterfaceToConcrete;
+import com.basho.proserv.datamigrator.riak.ThreadedClientDataReader;
+import com.basho.riak.pbc.RiakObject;
 
 // BucketDumper will only work with clients returning protobuffer objects, ie PBClient
 public class BucketDumper {
 	private final Logger log = LoggerFactory.getLogger(BucketDumper.class);
-	private Connection connection = null;
-	private File dataRoot = null;
+	private final Connection connection;
+	private final File dataRoot;
+	private final boolean verboseStatusOutput;
 	private int errorCount = 0;
 	
-	public BucketDumper(Connection connection, File dataRoot) {
+	private long timerStart = System.currentTimeMillis();
+	private long previousCount = 0;
+	
+	public BucketDumper(Connection connection, File dataRoot, boolean verboseStatusOutput) {
 		if (connection == null) {
 			throw new IllegalArgumentException("connection cannot be null");
 		}
@@ -32,6 +35,7 @@ public class BucketDumper {
 		
 		this.connection = connection;
 		this.dataRoot = dataRoot;
+		this.verboseStatusOutput = verboseStatusOutput;
 	}
 	
 	public int dumpAllBuckets() {
@@ -61,20 +65,27 @@ public class BucketDumper {
 		if (bucketName == null || bucketName.isEmpty()) {
 			throw new IllegalArgumentException("bucketName cannot be null or empty");
 		}
-		int objectCount = 0;
 		
-		RawClient riakClient = this.connection.riakClient;
+		int objectCount = 0;
 		
 		RiakObjectBucket dumpBucket = this.createBucket(bucketName);
 				
 		try {
-			for (String key : riakClient.listKeys(bucketName)) {
-				RiakResponse resp = riakClient.fetch(bucketName, key);
-				for (IRiakObject riakObject : resp.getRiakObjects()) {
-					dumpBucket.writeRiakObject(convertInterfaceToConcrete(riakObject));
-					++objectCount;
-				}
+			AbstractClientDataReader reader = new ThreadedClientDataReader(connection,
+					new ClientReaderFactory(), 
+					bucketName, 
+					this.connection.riakClient.listKeys(bucketName));
+			
+			RiakObject riakObject = null;
+			while((riakObject = reader.readObject()) != null) {
+				dumpBucket.writeRiakObject(riakObject);
+				++objectCount;
+
+				if (this.verboseStatusOutput) {
+					this.printStatus(objectCount);
+				}	
 			}
+			reader.close();
 		} catch (IOException e) {
 			log.error("Riak error listing keys for bucket: " + bucketName);
 			++errorCount;
@@ -85,6 +96,20 @@ public class BucketDumper {
 	
 	public int errorCount() {
 		return errorCount;
+	}
+	
+
+	private void printStatus(long objectCount) {
+		long end = System.currentTimeMillis();
+		if (end-timerStart >= 1000) {
+			long total = end-timerStart;
+			
+			System.out.print("\rRead " + (int)((objectCount-this.previousCount)/(total/1000.0)) + " obj/sec          ");
+			System.out.flush();
+			
+			this.previousCount = objectCount;
+			timerStart = System.currentTimeMillis();
+		}
 	}
 	
 	private RiakObjectBucket createBucket(String bucketName) {
