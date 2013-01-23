@@ -35,6 +35,7 @@ public class Main {
 		List<String> hosts = new ArrayList<String>();
 		int port = 8087;
 		Set<String> buckets = new HashSet<String>();
+		boolean verboseStatusOutput = false;
 		
 		if (cmd.hasOption("r")) {
 			dataPath = new File(cmd.getOptionValue("r"));
@@ -93,18 +94,22 @@ public class Main {
 		if (cmd.hasOption("a")) {
 			buckets = null;
 		}
+		if (cmd.hasOption("v")) {
+			verboseStatusOutput = true;
+		}
 		
 		if (cmd.hasOption("l")) {
-			runLoader(hosts, port, buckets, dataPath);
+			runLoader(hosts, port, buckets, dataPath, verboseStatusOutput);
 		}
 
 		if (cmd.hasOption("d")) {
-			runDumper(hosts, port, buckets, dataPath);
+			runDumper(hosts, port, buckets, dataPath, verboseStatusOutput);
 		}
+		
 	}
 
-	
-	public static void runLoader(List<String> hosts, int port, Set<String> buckets, File path) {
+	public static void runLoader(List<String> hosts, int port, 
+				Set<String> buckets, File path, boolean verboseStatusOutput) {
 		Connection connection = new Connection();
 		if (hosts.size() == 1) {
 			connection.connectPBClient(hosts.get(0), port);
@@ -112,7 +117,7 @@ public class Main {
 			connection.connectPBCluster(hosts, port);
 		}
 		
-		BucketLoader loader = new BucketLoader(connection, path);
+		BucketLoader loader = new BucketLoader(connection, path, verboseStatusOutput);
 		
 		long start = System.currentTimeMillis();
 		int loadCount = 0;
@@ -130,7 +135,7 @@ public class Main {
 		System.out.println("Loaded " + loadCount + " in " + totalTime + " seconds. " + recsPerSec + " objects/sec");
 	}
 	
-	public static void runDumper(List<String> hosts, int port, Set<String> buckets, File path) {
+	public static void runDumper(List<String> hosts, int port, Set<String> buckets, File path, boolean verboseStatusOutput) {
 		Connection connection = new Connection();
 		if (hosts.size() == 1) {
 			connection.connectPBClient(hosts.get(0), port);
@@ -138,7 +143,7 @@ public class Main {
 			connection.connectPBCluster(hosts, port);
 		}
 		
-		BucketDumper dumper = new BucketDumper(connection, path);
+		BucketDumper dumper = new BucketDumper(connection, path, verboseStatusOutput);
 		
 		long start = System.currentTimeMillis();
 		int dumpCount = 0;
@@ -180,6 +185,9 @@ public class Main {
 		options.addOption("h", true, "Specify Riak Host");
 		options.addOption("c", true, "Specify a file containing Riak Cluster Host Names");
 		options.addOption("p", true, "Specify Riak Port");
+		options.addOption("v", false, "Output verbose status output to the command line");
+		options.addOption("k", false, "Dump keys to file");
+		options.addOption("j", true, "Resume based on previuosly written keys");
 		
 		return options;
 	}
