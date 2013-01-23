@@ -9,21 +9,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.basho.proserv.datamigrator.io.RiakObjectBucket;
+import com.basho.proserv.datamigrator.riak.AbstractClientDataWriter;
+import com.basho.proserv.datamigrator.riak.ClientWriterFactory;
 import com.basho.proserv.datamigrator.riak.Connection;
-import com.basho.riak.client.raw.RawClient;
-import com.basho.riak.pbc.RiakObject;
+import com.basho.proserv.datamigrator.riak.ThreadedClientDataWriter;
 
-import static com.basho.riak.client.raw.pbc.ConversionUtilWrapper.convertConcreteToInterface;
 
 // BucketLoader will only work with clients returning protobuffer objects, ie PBClient
 public class BucketLoader {
 	private final Logger log = LoggerFactory.getLogger(BucketLoader.class);
-	private Connection connection = null;
-	private File dataRoot = null;
+	private final Connection connection;
+	private final File dataRoot;
+	private final boolean verboseStatusOutput;
 	private int errorCount = 0;
 	
+	private long timerStart = System.currentTimeMillis();
+	private long previousCount = 0;
 	
-	public BucketLoader(Connection connection, File dataRoot) {
+	
+	public BucketLoader(Connection connection, File dataRoot, boolean verboseStatusOutput) {
 		if (connection == null) {
 			throw new IllegalArgumentException("connection cannot be null");
 		}
@@ -33,6 +37,8 @@ public class BucketLoader {
 		
 		this.connection = connection;
 		this.dataRoot = dataRoot;
+		this.verboseStatusOutput = verboseStatusOutput;
+		
 	}
 	
 	public int LoadAllBuckets() {
@@ -59,31 +65,43 @@ public class BucketLoader {
 		}
 		int objectCount = 0;
 		
-		RawClient riakClient = this.connection.riakClient;
-
 		RiakObjectBucket dumpBucket = this.createBucket(bucketName);
-		
-		RiakObject riakObject = null;
-		while (true) {
-			riakObject = dumpBucket.readRiakObject();
-			if (riakObject == null) {
-				break;
-			}
 			
-			try {
-				riakClient.store(convertConcreteToInterface(riakObject));
+		AbstractClientDataWriter writer = 
+				new ThreadedClientDataWriter(connection, new ClientWriterFactory(), dumpBucket);
+		try {
+			while (writer.writeObject()) {
+				if (this.verboseStatusOutput) {
+					this.printStatus(objectCount);
+				}
 				++objectCount;
-			} catch (IOException e) {
-				log.error("Riak error storing value to " + bucketName, e);
-				++errorCount;
 			}
+		} catch (IOException e) {
+			log.error("Riak error storing value to " + bucketName, e);
+			++errorCount;
 		}
-		
 		return objectCount;
 	}
 	
 	public int errorCount() {
 		return errorCount;
+	}
+	
+	public void close() {
+		this.connection.close();
+	}
+	
+	private void printStatus(long objectCount) {
+		long end = System.currentTimeMillis();
+		if (end-timerStart >= 1000) {
+			long total = end-timerStart;
+			
+			System.out.print("\rWrote " + (int)((objectCount-this.previousCount)/(total/1000.0)) + " obj/sec          ");
+			System.out.flush();
+			
+			this.previousCount = objectCount;
+			timerStart = System.currentTimeMillis();
+		}
 	}
 	
 	private RiakObjectBucket createBucket(String bucketName) {
