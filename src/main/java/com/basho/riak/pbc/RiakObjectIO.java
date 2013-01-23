@@ -15,6 +15,7 @@ import com.basho.riak.protobuf.RiakKvPB;
 import com.google.protobuf.InvalidProtocolBufferException;
 
 public class RiakObjectIO implements RiakMessageCodes {
+	@SuppressWarnings("unused")
 	private final Logger log = LoggerFactory.getLogger(RiakObjectIO.class);
 
 	
