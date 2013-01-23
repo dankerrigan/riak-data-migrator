@@ -50,6 +50,7 @@ public class BucketTests {
 		RiakObjectBucket readBucket = new RiakObjectBucket(this.rootPath, RiakObjectBucket.BucketMode.READ);
 		
 		int readCount = 0;
+		@SuppressWarnings("unused")
 		RiakObject riakObject = null;
 		while ((riakObject = readBucket.readRiakObject()) != null) {
 			++readCount;
