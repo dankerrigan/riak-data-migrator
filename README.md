@@ -32,11 +32,12 @@ Options:
         Cluster Host Names. Required if a host name is not specified.
         host name is not specified.  
 -p <portNumber> Specify Riak Port. If not specified, defaults to 8087.  
+-v Verbose output, shows number of ops/sec every second
 
 Examples:
 -------------------------
 Dump all buckets from Riak:  
-```java -jar riak-data-migrator-0.1.jar -d -r /var/riak_export -a -h 127.0.0.1 -p 8087```
+```java -jar riak-data-migrator-0.1.1.jar -d -r /var/riak_export -a -h 127.0.0.1 -p 8087```
 
 Load all buckets previously dumped back into Riak:  
 ```java -jar riak-data-migrator-0.1.jar -l -r /var/riak-export -a -h 127.0.0.1 -p 8087```
