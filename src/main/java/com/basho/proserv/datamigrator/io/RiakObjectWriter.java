@@ -1,5 +1,6 @@
 package com.basho.proserv.datamigrator.io;
 
+import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -13,7 +14,7 @@ import com.basho.riak.pbc.RiakObject;
 import com.basho.riak.pbc.RiakObjectIO;
 import com.google.protobuf.ByteString;
 
-public class RiakObjectWriter {
+public class RiakObjectWriter implements IRiakObjectWriter {
 	private final Logger log = LoggerFactory.getLogger(RiakObjectWriter.class);
 	
 	DataOutputStream dataOutputStream = null;
@@ -21,7 +22,7 @@ public class RiakObjectWriter {
 	
 	public RiakObjectWriter(File file) {
 		try {
-			this.dataOutputStream = new DataOutputStream(new FileOutputStream(file));
+			this.dataOutputStream = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file)));
 		} catch (FileNotFoundException e) {
 			throw new IllegalArgumentException("File could not be created " + file.getAbsolutePath());
 		}
