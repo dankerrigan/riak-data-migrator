@@ -1,6 +1,7 @@
 package com.basho.proserv.datamigrator.io;
 
 import java.io.File;
+import java.util.Iterator;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -9,11 +10,12 @@ import org.slf4j.LoggerFactory;
 
 import com.basho.riak.pbc.RiakObject;
 
-public class RiakObjectBucket {
+public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, Iterable<RiakObject> {
 	public static enum BucketMode { READ, WRITE };
+	
 	private final Logger log = LoggerFactory.getLogger(RiakObjectBucket.class);
 	
-	private final static int DEFAULT_BUCKET_CHUNK_COUNT = 100000;
+	private final static int DEFAULT_BUCKET_CHUNK_COUNT = 10000;
 	private final static String DEFAULT_FILE_PREFIX = "";
 	
 	private File fileRoot = null;
@@ -23,8 +25,8 @@ public class RiakObjectBucket {
 	
 	private Long bucketCount = 0L;
 	
-	private RiakObjectWriter currentRiakObjectWriter = null;
-	private RiakObjectReader currentRiakObjectReader = null;
+	private IRiakObjectWriter currentRiakObjectWriter = null;
+	private IRiakObjectReader currentRiakObjectReader = null;
 	
 	private Queue<File> fileQueue = new LinkedBlockingQueue<File>();
 	
@@ -91,10 +93,6 @@ public class RiakObjectBucket {
 				this.currentRiakObjectWriter == null);
 	}
 	
-//	private boolean shouldOpenNewChunk() {
-//		return (currentRiakObjectReader == null);	
-//	}
-	
 	private void populateChunks() {
 		for (String path : this.fileRoot.list()) {
 			String fullPath = this.fileRoot.getAbsolutePath() + "/" + path;
@@ -109,7 +107,7 @@ public class RiakObjectBucket {
 		String filename = this.fileRoot.getAbsolutePath() + "/" 
 				+ this.filePrefix + this.bucketCount.toString();
 		log.debug("Creating new chunk file " + filename);
-		this.currentRiakObjectWriter = new RiakObjectWriter(new File(filename));
+		this.currentRiakObjectWriter = new BatchingRiakObjectWriter(new File(filename));
 		return true;
 	}
 	
@@ -123,7 +121,7 @@ public class RiakObjectBucket {
 				this.currentRiakObjectReader.close();
 			}
 			log.debug("Opening chunk file " + chunkFile.getAbsolutePath());
-			this.currentRiakObjectReader = new RiakObjectReader(chunkFile);
+			this.currentRiakObjectReader = new ThreadedRiakObjectReader(chunkFile);
 		}
 		return true;
 	}
@@ -140,6 +138,41 @@ public class RiakObjectBucket {
 		if (this.currentRiakObjectReader != null) {
 			this.currentRiakObjectReader.close();
 		}
+	}
+
+	@Override
+	public Iterator<RiakObject> iterator() {
+		return new RiakObjectIterator(this);
+	}
+	
+	private class RiakObjectIterator implements Iterator<RiakObject> {
+		private final RiakObjectBucket riakObjectBucket;
+		
+		private RiakObject nextObject = null;
+		
+		public RiakObjectIterator(RiakObjectBucket riakObjectBucket) {
+			this.riakObjectBucket = riakObjectBucket;
+			this.nextObject = this.riakObjectBucket.readRiakObject();
+		}
+		
+		
+		@Override
+		public boolean hasNext() {
+			return nextObject != null;
+		}
+
+		@Override
+		public RiakObject next() {
+			RiakObject object = this.nextObject;
+			this.nextObject = this.riakObjectBucket.readRiakObject();
+			return object;
+		}
+
+		@Override
+		public void remove() {
+			throw new UnsupportedOperationException();
+		}
+		
 	}
 	
 }
