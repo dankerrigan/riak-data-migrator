@@ -20,15 +20,11 @@ public class ClientDataWriter extends AbstractClientDataWriter {
 	}
 
 	@Override
-	public boolean writeObject() throws IOException {
-		this.clientWriter.storeRiakObject(this.objectIterator.next());
-		return true;
+	public RiakObject writeObject() throws IOException {
+		RiakObject object = this.objectIterator.next();
+		this.clientWriter.storeRiakObject(object);
+		return object;
 	}
 
-	@Override
-	public void close() throws IOException {
-		//no-op
-		
-	}
 
 }

@@ -17,8 +17,9 @@ import com.google.protobuf.ByteString;
 public class RiakObjectWriter implements IRiakObjectWriter {
 	private final Logger log = LoggerFactory.getLogger(RiakObjectWriter.class);
 	
-	DataOutputStream dataOutputStream = null;
-	RiakObjectIO riakObjectIo = new RiakObjectIO();
+	private final DataOutputStream dataOutputStream;
+	private final RiakObjectIO riakObjectIo = new RiakObjectIO();
+	private final KeyJournal keyJournal;
 	
 	public RiakObjectWriter(File file) {
 		try {
@@ -26,12 +27,14 @@ public class RiakObjectWriter implements IRiakObjectWriter {
 		} catch (FileNotFoundException e) {
 			throw new IllegalArgumentException("File could not be created " + file.getAbsolutePath());
 		}
-
+		
+		this.keyJournal = new KeyJournal(KeyJournal.createKeyPathFromPath(file), KeyJournal.Mode.WRITE);
 	}
 	
 	public boolean writeRiakObject(RiakObject riakObject) {
 		try {
 			riakObjectIo.writeRiakObject(this.dataOutputStream, riakObject);
+			keyJournal.write(riakObject);
 		} catch (IOException ex) {
 			log.error("Could not write RiakObject to outputStream", ex);
 			this.close();

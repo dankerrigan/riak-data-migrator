@@ -30,7 +30,10 @@ public class ThreadedClientDataWriterTests {
 				dummyObjects);
 	
 		int writtenCount = 0;
-		while (writer.writeObject()) {
+		
+		@SuppressWarnings("unused")
+		RiakObject riakObject = null;
+		while ((riakObject = writer.writeObject()) != null) {
 			++writtenCount;
 		}
 		

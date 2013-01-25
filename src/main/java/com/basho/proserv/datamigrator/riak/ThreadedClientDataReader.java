@@ -1,18 +1,24 @@
 package com.basho.proserv.datamigrator.riak;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import com.basho.proserv.datamigrator.util.NamedThreadFactory;
 import com.basho.riak.pbc.RiakObject;
 import com.google.protobuf.ByteString;
 
 public class ThreadedClientDataReader extends AbstractClientDataReader {
 	private static final int MAX_QUEUE_SIZE = 10000;
 	private static final int WORKER_PROC_MULTIPLER = 2;
+
+	private final NamedThreadFactory threadFactory = new NamedThreadFactory();
+	private final ExecutorService executor = Executors.newCachedThreadPool(threadFactory);
 	
-	private final ExecutorService executor = Executors.newCachedThreadPool();
 	private final int workerCount;
 	private final LinkedBlockingQueue<String> keyQueue = 
 			new LinkedBlockingQueue<String>(MAX_QUEUE_SIZE);
@@ -23,6 +29,7 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 	private static String STOP_STRING = "STOPSTOPSTOPSTOPSTOP";
 	private static ByteString STOP_FLAG = ByteString.copyFromUtf8(STOP_STRING);
 	
+	private List<Future<Runnable>> threads = new ArrayList<Future<Runnable>>();
 	private int stopCount = 0;
 	
 	public ThreadedClientDataReader(Connection connection, 
@@ -50,43 +57,60 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 		RiakObject riakObject = null;
 		
 		try {
-			while (!Thread.currentThread().isInterrupted()) {
-//				while ((riakObject = this.returnQueue.poll()) == null) {
-//					Thread.sleep(10);
-//				}
-				riakObject = this.returnQueue.take();
-				if (riakObject.getBucketBS() == STOP_FLAG) {
-					++stopCount;
-					if (this.stopCount == this.workerCount) {
-						riakObject = null;
+			riakObject = this.returnQueue.take();
+			//fast exit if not flag
+			if (riakObject.getBucketBS() == STOP_FLAG ||
+					riakObject.getBucketBS() == ERROR_FLAG) {
+				while (!Thread.currentThread().isInterrupted()) {
+	//				while ((riakObject = this.returnQueue.poll()) == null) {
+	//					Thread.sleep(10);
+	//				}
+					
+					if (riakObject.getBucketBS() == STOP_FLAG) {
+						++stopCount;
+						if (this.stopCount == this.workerCount) {
+							riakObject = null;
+							break;
+						}
+					} else if (riakObject.getBucketBS() == ERROR_FLAG) {
+						this.interruptWorkers();
+						throw new IOException();
+					} else { 
 						break;
 					}
-				} else if (riakObject.getBucketBS() == ERROR_FLAG) {
-					throw new IOException();
-				} else { 
-					break;
+					riakObject = this.returnQueue.take();
 				}
 			}
 		} catch (InterruptedException e) {
 			//no-op, allow to return 
+		} finally {
+			this.close();
 		}
 		
 		return riakObject;
 	}
 	
+	@SuppressWarnings("unchecked")
 	private void run() {
 		for (int i = 0; i < workerCount; ++i) {
-			this.executor.execute(new ClientReaderThread(
+			threadFactory.setNextThreadName(String.format("ClientReaderThread-%d", i));
+			this.threads.add((Future<Runnable>) this.executor.submit(new ClientReaderThread(
 										this.clientReaderFactory.createClientReader(this.connection), 
 										bucket, 
 										this.keyQueue, 
-										this.returnQueue));
+										this.returnQueue)));
 		}
-		this.executor.execute(new KeyReaderThread(this.keySource, this.keyQueue, 
-				this.workerCount));
+		threadFactory.setNextThreadName("KeyReaderThread");
+		this.threads.add((Future<Runnable>) this.executor.submit(new KeyReaderThread(this.keySource, this.keyQueue, 
+				this.workerCount)));
 	}
 	
-	public  void close() {
+	private void interruptWorkers() {
+		for (Future<Runnable> worker : threads) {
+			worker.cancel(true);
+		}
+	}
+	private void close() {
 		this.executor.shutdown();
 	}
 	

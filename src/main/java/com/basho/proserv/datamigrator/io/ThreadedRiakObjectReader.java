@@ -1,11 +1,15 @@
 package com.basho.proserv.datamigrator.io;
 
 import java.io.File;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.basho.proserv.datamigrator.util.NamedThreadFactory;
 import com.basho.riak.pbc.RiakObject;
 import com.google.protobuf.ByteString;
 
@@ -16,16 +20,21 @@ public class ThreadedRiakObjectReader implements IRiakObjectReader {
 	private static final ByteString STOP_FLAG = ByteString.copyFromUtf8("STOPSTOPSTOP");
 	
 	private final LinkedBlockingQueue<RiakObject> queue;
+	private final NamedThreadFactory threadFactory = new NamedThreadFactory();
+	private final ExecutorService executor = Executors.newCachedThreadPool(threadFactory);
 	
+	private final Future<Runnable> readerFuture;
+	
+	private static int threadId = 0;
 	private long count = 0;
 	
+	@SuppressWarnings("unchecked")
 	public ThreadedRiakObjectReader(File file) {
+		
 		this.queue = new LinkedBlockingQueue<RiakObject>(DEFAULT_QUEUE_SIZE);
 		
-		Thread thread = new Thread(new RiakObjectReaderThread(file, this.queue));
-		thread.setName(ThreadedRiakObjectReader.class.getName());
-		thread.setDaemon(true);
-		thread.start();
+		threadFactory.setNextThreadName(String.format("ThreadedRiakObjectReader-%d", threadId++));
+		this.readerFuture = (Future<Runnable>) executor.submit(new RiakObjectReaderThread(file, this.queue));
 	}
 	
 	
@@ -36,6 +45,7 @@ public class ThreadedRiakObjectReader implements IRiakObjectReader {
 			riakObject = queue.take();
 			++this.count;
 		} catch (InterruptedException e) {
+			readerFuture.cancel(true);
 			riakObject = null;
 		}
 		
@@ -48,7 +58,7 @@ public class ThreadedRiakObjectReader implements IRiakObjectReader {
 
 	@Override
 	public void close() {
-		//no-op
+		executor.shutdown();
 		
 	}
 	
@@ -69,7 +79,7 @@ public class ThreadedRiakObjectReader implements IRiakObjectReader {
 					RiakObject riakObject = super.readRiakObject();
 					if (riakObject != null) {
 						while (!this.queue.offer(riakObject)) { // offer returns false if op not successful
-							Thread.sleep(100);
+							Thread.sleep(10);
 						}
 						++count;
 					} else {

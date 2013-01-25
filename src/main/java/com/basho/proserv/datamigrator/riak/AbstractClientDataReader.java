@@ -21,5 +21,5 @@ public abstract class AbstractClientDataReader {
 		this.bucket = bucket;
 	}
 	public abstract RiakObject readObject() throws IOException;
-	public abstract void close() throws IOException;
+//	public abstract void close() throws IOException;
 }

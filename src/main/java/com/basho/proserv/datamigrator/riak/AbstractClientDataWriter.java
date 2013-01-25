@@ -16,8 +16,8 @@ public abstract class AbstractClientDataWriter {
 		this.clientWriterFactory = clientWriterFactory;
 		this.objectSource = objectSource;
 	}
-	public abstract boolean writeObject() throws IOException;
-	public abstract void close() throws IOException;
+	public abstract RiakObject writeObject() throws IOException;
+//	public abstract void close() throws IOException;
 	
 	
 }

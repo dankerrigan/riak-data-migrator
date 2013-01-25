@@ -15,8 +15,9 @@ public class ClientWriter implements IClientWriter {
 	}
 	
 	@Override
-	public void storeRiakObject(RiakObject riakObject) throws IOException {
+	public RiakObject storeRiakObject(RiakObject riakObject) throws IOException {
 		this.connection.riakClient.store(convertConcreteToInterface(riakObject));
+		return riakObject;
 	}
 
 }

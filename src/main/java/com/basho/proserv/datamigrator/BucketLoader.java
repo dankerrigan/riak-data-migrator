@@ -13,6 +13,7 @@ import com.basho.proserv.datamigrator.riak.AbstractClientDataWriter;
 import com.basho.proserv.datamigrator.riak.ClientWriterFactory;
 import com.basho.proserv.datamigrator.riak.Connection;
 import com.basho.proserv.datamigrator.riak.ThreadedClientDataWriter;
+import com.basho.riak.pbc.RiakObject;
 
 
 // BucketLoader will only work with clients returning protobuffer objects, ie PBClient
@@ -70,7 +71,8 @@ public class BucketLoader {
 		AbstractClientDataWriter writer = 
 				new ThreadedClientDataWriter(connection, new ClientWriterFactory(), dumpBucket);
 		try {
-			while (writer.writeObject()) {
+			RiakObject riakObject = null;
+			while ((riakObject = writer.writeObject()) != null) {
 				if (this.verboseStatusOutput) {
 					this.printStatus(objectCount);
 				}
@@ -79,7 +81,10 @@ public class BucketLoader {
 		} catch (IOException e) {
 			log.error("Riak error storing value to " + bucketName, e);
 			++errorCount;
+		} finally {
+			dumpBucket.close();
 		}
+		
 		return objectCount;
 	}
 	

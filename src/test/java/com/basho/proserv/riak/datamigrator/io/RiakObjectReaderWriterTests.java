@@ -9,6 +9,7 @@ import java.util.Set;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import com.basho.proserv.datamigrator.io.KeyJournal;
 import com.basho.proserv.datamigrator.io.RiakObjectReader;
 import com.basho.proserv.datamigrator.io.RiakObjectWriter;
 import com.basho.riak.client.IRiakObject;
@@ -31,6 +32,7 @@ public class RiakObjectReaderWriterTests {
 				   ByteString.copyFromUtf8(""));
 		
 		File dataFile = tempFolder.newFile();
+		File keys = tempFolder.newFile();
 		RiakObjectWriter writer = new RiakObjectWriter(dataFile);
 		
 		for (int i = 0; i < objectCount; ++i) {
@@ -74,6 +76,7 @@ public class RiakObjectReaderWriterTests {
 		RiakObject riakObject = ConversionUtilWrapper.convertInterfaceToConcrete(iRiakObject);
 		
 		File dataFile = tempFolder.newFile();
+		File keys = tempFolder.newFile();
 		RiakObjectWriter writer = new RiakObjectWriter(dataFile);
 		
 		writer.writeRiakObject(riakObject);

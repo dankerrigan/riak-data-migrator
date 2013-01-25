@@ -5,5 +5,5 @@ import java.io.IOException;
 import com.basho.riak.pbc.RiakObject;
 
 public interface IClientWriter {
-	public void storeRiakObject(RiakObject riakObject) throws IOException;
+	public RiakObject storeRiakObject(RiakObject riakObject) throws IOException;
 }

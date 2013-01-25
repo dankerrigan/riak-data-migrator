@@ -176,8 +176,8 @@ public class Main {
 	private static Options createOptions() {
 		Options options = new Options();
 		
-		options.addOption("l", false, "Set to Load buckets. Cannot be used with d");
-		options.addOption("d", false, "Set to Dump buckets. Cannot be used with l");
+		options.addOption("l", false, "Set to Load buckets. Cannot be used with d, k");
+		options.addOption("d", false, "Set to Dump buckets. Cannot be used with l, k");
 		options.addOption("r", true, "Set the path for data to be loaded to or dumped from. Required.");
 		options.addOption("a", false, "Load or Dump all buckets");
 		options.addOption("b", true, "Load or Dump a single bucket");
@@ -186,7 +186,7 @@ public class Main {
 		options.addOption("c", true, "Specify a file containing Riak Cluster Host Names");
 		options.addOption("p", true, "Specify Riak Port");
 		options.addOption("v", false, "Output verbose status output to the command line");
-		options.addOption("k", false, "Dump keys to file");
+		options.addOption("k", false, "Dump keys to file.  Cannot be used with l, d");
 		options.addOption("j", true, "Resume based on previuosly written keys");
 		
 		return options;

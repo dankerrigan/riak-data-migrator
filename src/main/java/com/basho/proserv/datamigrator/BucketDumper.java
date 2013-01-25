@@ -85,10 +85,11 @@ public class BucketDumper {
 					this.printStatus(objectCount);
 				}	
 			}
-			reader.close();
 		} catch (IOException e) {
 			log.error("Riak error listing keys for bucket: " + bucketName);
 			++errorCount;
+		} finally {
+			dumpBucket.close();
 		}
 		
 		return objectCount;

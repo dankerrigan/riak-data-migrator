@@ -1,6 +1,7 @@
 package com.basho.proserv.datamigrator.io;
 
 import java.io.File;
+import java.io.FilenameFilter;
 import java.util.Iterator;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -29,6 +30,27 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 	private IRiakObjectReader currentRiakObjectReader = null;
 	
 	private Queue<File> fileQueue = new LinkedBlockingQueue<File>();
+	
+	public static FilenameFilter dataFileFilter = new FilenameFilter() {
+		@Override
+		public boolean accept(File dir, String name) {
+			return name.toLowerCase().endsWith(".data");
+		}
+	};
+	
+	public static FilenameFilter keyFileFilter = new FilenameFilter() {
+		@Override
+		public boolean accept(File dir, String name) {
+			return name.toLowerCase().endsWith(".keys");
+		}
+	};
+	
+	public static FilenameFilter loadedKeyFileFilter = new FilenameFilter() {
+		@Override
+		public boolean accept(File dir, String name) {
+			return name.toLowerCase().endsWith(".loadedkeys");
+		}
+	};
 	
 	public RiakObjectBucket(File fileRoot, BucketMode bucketMode) {
 		this(fileRoot, bucketMode, DEFAULT_BUCKET_CHUNK_COUNT);
@@ -94,7 +116,7 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 	}
 	
 	private void populateChunks() {
-		for (String path : this.fileRoot.list()) {
+		for (String path : this.fileRoot.list(dataFileFilter)) {
 			String fullPath = this.fileRoot.getAbsolutePath() + "/" + path;
 			File file = new File(fullPath);
 			if (!file.isDirectory() && file.isFile()) {
@@ -105,9 +127,9 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 	
 	private boolean writeNewChunkFile() {
 		String filename = this.fileRoot.getAbsolutePath() + "/" 
-				+ this.filePrefix + this.bucketCount.toString();
+				+ this.filePrefix + this.bucketCount.toString() + ".data";
 		log.debug("Creating new chunk file " + filename);
-		this.currentRiakObjectWriter = new BatchingRiakObjectWriter(new File(filename));
+		this.currentRiakObjectWriter = new ThreadedRiakObjectWriter(new File(filename));
 		return true;
 	}
 	
@@ -117,9 +139,7 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 			this.currentRiakObjectReader = null;
 			return false;
 		} else {
-			if (this.currentRiakObjectReader != null) {
-				this.currentRiakObjectReader.close();
-			}
+			this.closeChunk();
 			log.debug("Opening chunk file " + chunkFile.getAbsolutePath());
 			this.currentRiakObjectReader = new ThreadedRiakObjectReader(chunkFile);
 		}

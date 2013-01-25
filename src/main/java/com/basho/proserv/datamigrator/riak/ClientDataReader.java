@@ -42,13 +42,5 @@ public class ClientDataReader extends AbstractClientDataReader {
 		}
 		return queuedObjects.remove();
 	}
-
-
-
-	@Override
-	public void close() throws IOException {
-		//no-op
-	}
-
 	
 }
