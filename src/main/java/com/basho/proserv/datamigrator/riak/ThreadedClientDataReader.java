@@ -8,11 +8,17 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.basho.proserv.datamigrator.BucketLoader;
+import com.basho.proserv.datamigrator.io.Key;
 import com.basho.proserv.datamigrator.util.NamedThreadFactory;
 import com.basho.riak.pbc.RiakObject;
 import com.google.protobuf.ByteString;
 
 public class ThreadedClientDataReader extends AbstractClientDataReader {
+	private final Logger log = LoggerFactory.getLogger(ThreadedClientDataReader.class);
 	private static final int MAX_QUEUE_SIZE = 10000;
 	private static final int WORKER_PROC_MULTIPLER = 2;
 
@@ -20,34 +26,35 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 	private final ExecutorService executor = Executors.newCachedThreadPool(threadFactory);
 	
 	private final int workerCount;
-	private final LinkedBlockingQueue<String> keyQueue = 
-			new LinkedBlockingQueue<String>(MAX_QUEUE_SIZE);
+	private final LinkedBlockingQueue<Key> keyQueue = 
+			new LinkedBlockingQueue<Key>(MAX_QUEUE_SIZE);
 	private final LinkedBlockingQueue<RiakObject> returnQueue = 
 			new LinkedBlockingQueue<RiakObject>(MAX_QUEUE_SIZE);
 	
-	private static ByteString ERROR_FLAG = ByteString.copyFromUtf8("ERRORERRORERROR");
+	private static String ERROR_STRING = "ERRORERRORERROR";
+	private static ByteString ERROR_FLAG = ByteString.copyFromUtf8(ERROR_STRING);
+	private static Key ERROR_KEY = new Key(ERROR_STRING, ERROR_STRING);
 	private static String STOP_STRING = "STOPSTOPSTOPSTOPSTOP";
 	private static ByteString STOP_FLAG = ByteString.copyFromUtf8(STOP_STRING);
+	private static Key STOP_KEY = new Key(STOP_STRING, STOP_STRING);
 	
 	private List<Future<Runnable>> threads = new ArrayList<Future<Runnable>>();
 	private int stopCount = 0;
 	
 	public ThreadedClientDataReader(Connection connection, 
 								   IClientReaderFactory clientReaderFactory,
-								   String bucket, 
-								   Iterable<String> keySource) {
+								   Iterable<Key> keySource) {
 		this(connection, 
 			 clientReaderFactory, 
-			 bucket, 
 			 keySource, 
 			 Runtime.getRuntime().availableProcessors() * WORKER_PROC_MULTIPLER);
 	}
 	
 	public ThreadedClientDataReader(Connection connection, 
 				IClientReaderFactory clientReaderFactory, 
-				String bucket, Iterable<String> keySource,
+				Iterable<Key> keySource,
 				int workerCount) {
-		super(connection, clientReaderFactory, bucket, keySource);
+		super(connection, clientReaderFactory, keySource);
 		this.workerCount = workerCount;
 		
 		this.run();
@@ -95,8 +102,7 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 		for (int i = 0; i < workerCount; ++i) {
 			threadFactory.setNextThreadName(String.format("ClientReaderThread-%d", i));
 			this.threads.add((Future<Runnable>) this.executor.submit(new ClientReaderThread(
-										this.clientReaderFactory.createClientReader(this.connection), 
-										bucket, 
+										this.clientReaderFactory.createClientReader(this.connection),
 										this.keyQueue, 
 										this.returnQueue)));
 		}
@@ -116,11 +122,11 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 	
 	private class KeyReaderThread implements Runnable {
 
-		private final Iterable<String> keySource;
-		private final LinkedBlockingQueue<String> keyQueue;
+		private final Iterable<Key> keySource;
+		private final LinkedBlockingQueue<Key> keyQueue;
 		private final int stopCount;
 		
-		public KeyReaderThread(Iterable<String> keys, LinkedBlockingQueue<String> keyQueue,
+		public KeyReaderThread(Iterable<Key> keys, LinkedBlockingQueue<Key> keyQueue,
 				int stopCount) {
 			this.keySource = keys;
 			this.keyQueue = keyQueue;
@@ -130,7 +136,7 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 		@Override
 		public void run() {
 			try {
-				for (String key : keySource) {
+				for (Key key : keySource) {
 					if (Thread.currentThread().isInterrupted()) {
 						break;
 					}
@@ -140,10 +146,17 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 					}
 				}
 				for (int i = 0; i < this.stopCount; ++i) {
-					this.keyQueue.put(STOP_STRING);
+					this.keyQueue.put(STOP_KEY);
 				}
 			} catch (InterruptedException e) {
 				// no-op, allow to exit
+			} catch (Throwable e) { // key source error
+				log.error("Error listing keys", e);
+				try {
+					keyQueue.put(ERROR_KEY);
+				} catch (InterruptedException intE) {
+					// no-op
+				}
 			}
 		}
 	}
@@ -151,16 +164,13 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 	private class ClientReaderThread implements Runnable {
 
 		private final IClientReader reader;
-		private final String bucket;
-		private final LinkedBlockingQueue<String> keyQueue;
+		private final LinkedBlockingQueue<Key> keyQueue;
 		private final LinkedBlockingQueue<RiakObject> returnQueue;
 		
 		public ClientReaderThread(IClientReader reader,
-				String bucket,
-				LinkedBlockingQueue<String> keyQueue,
+				LinkedBlockingQueue<Key> keyQueue,
 				LinkedBlockingQueue<RiakObject> returnQueue) {
 			this.reader = reader;
-			this.bucket = bucket;
 			this.keyQueue = keyQueue;
 			this.returnQueue = returnQueue;
 		}
@@ -170,13 +180,28 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 			try {
 				try {
 					while (!Thread.currentThread().isInterrupted()) {
-						 String key = keyQueue.take();
-						 if (key == STOP_STRING) {
+						 Key key = keyQueue.take();
+						 if (key.bucket() == STOP_STRING) {
 							 break;
+						 } else if (key.bucket() == ERROR_STRING) {
+							 returnQueue.put(new RiakObject(ERROR_FLAG, ERROR_FLAG, ERROR_FLAG));
 						 }
-						 RiakObject[] objects = this.reader.fetchRiakObject(bucket, key);
-						 for (RiakObject riakObject : objects) {
-							 returnQueue.put(riakObject);
+						 int retries = 0;
+						 while (!Thread.currentThread().isInterrupted() && retries < MAX_RETRIES) {
+							 try {
+								 RiakObject[] objects = this.reader.fetchRiakObject(key.bucket(), key.key());
+								 for (RiakObject riakObject : objects) {
+									 returnQueue.put(riakObject);
+								 }
+								 break;
+							 } catch (IOException e) {
+								 log.error("Fetch failed, retrying");
+								 ++retries;
+								 if (retries > MAX_RETRIES) {
+									 log.error("Max retries reached");
+									 throw e;
+								 }
+							 }
 						 }
 					}
 					returnQueue.put(new RiakObject(STOP_FLAG, STOP_FLAG, STOP_FLAG));

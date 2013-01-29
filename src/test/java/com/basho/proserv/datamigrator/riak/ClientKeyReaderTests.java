@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.junit.Test;
 
+import com.basho.proserv.datamigrator.io.Key;
 import com.basho.riak.pbc.RiakObject;
 
 public class ClientKeyReaderTests {
@@ -18,15 +19,14 @@ public class ClientKeyReaderTests {
 		Connection connection = new Connection();
 		IClientReaderFactory factory = new DummyClientReaderFactory();
 				
-		List<String> dummyKeys = new ArrayList<String>();
+		List<Key> dummyKeys = new ArrayList<Key>();
 		for (Integer i = 0; i < TEST_SIZE; ++i) {
-			dummyKeys.add(i.toString());
+			dummyKeys.add(new Key("dummyBucket", i.toString()));
 		}
 		
 		ClientDataReader reader = 
 				new ClientDataReader(connection, 
 						factory, 
-						"fakeBucket", 
 						dummyKeys);
 		
 		int readCount = 0;

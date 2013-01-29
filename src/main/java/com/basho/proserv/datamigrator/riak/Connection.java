@@ -2,6 +2,7 @@ package com.basho.proserv.datamigrator.riak;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +41,7 @@ public class Connection {
 		return riakClient == null ? false : true;
 	}
 	
-	public PBClusterConfig createPbClusterConfig(List<String> hosts, int port) {
+	public PBClusterConfig createPbClusterConfig(Set<String> hosts, int port) {
 		PBClusterConfig pbClusterConfig = new PBClusterConfig(this.maxConnections);
 		for (String host : hosts) {
 			PBClientConfig config = createPBClientConfig(host, port);
@@ -50,7 +51,7 @@ public class Connection {
 		return pbClusterConfig;
 	}
 	
-	public HTTPClusterConfig createHttpClusterConfig(List<String> hosts, int port) {
+	public HTTPClusterConfig createHttpClusterConfig(Set<String> hosts, int port) {
 		HTTPClusterConfig httpClusterConfig = new HTTPClusterConfig(this.maxConnections);
 		for (String host : hosts) {
 			HTTPClientConfig config = createHTTPClientConfig(host, port);
@@ -59,7 +60,7 @@ public class Connection {
 		return httpClusterConfig;
 	}
 	
-	public boolean connectHTTPCluster(List<String> hosts, int port) {
+	public boolean connectHTTPCluster(Set<String> hosts, int port) {
 		boolean success = false;
 		HTTPClusterConfig clusterConfig = createHttpClusterConfig(hosts, port);
 		try {
@@ -70,7 +71,7 @@ public class Connection {
 		}
 		return success;
 	}
-	public boolean connectPBCluster(List<String> hosts, int port) {
+	public boolean connectPBCluster(Set<String> hosts, int port) {
 		boolean success = false;
 		PBClusterConfig clusterConfig = createPbClusterConfig(hosts, port);
 		try {
@@ -82,7 +83,7 @@ public class Connection {
 		return success;
 	}
 	
-	public boolean connectCluster (ClientType clientType, List<String> hosts, int port) {
+	public boolean connectCluster (ClientType clientType, Set<String> hosts, int port) {
 		if (clientType == ClientType.HTTP) {
 			return connectHTTPCluster(hosts, port);
 		} else if (clientType == ClientType.PB) {

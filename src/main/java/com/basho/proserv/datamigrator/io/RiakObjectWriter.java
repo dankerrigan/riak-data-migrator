@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.zip.GZIPOutputStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,22 +20,21 @@ public class RiakObjectWriter implements IRiakObjectWriter {
 	
 	private final DataOutputStream dataOutputStream;
 	private final RiakObjectIO riakObjectIo = new RiakObjectIO();
-	private final KeyJournal keyJournal;
 	
 	public RiakObjectWriter(File file) {
 		try {
-			this.dataOutputStream = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file)));
+			this.dataOutputStream = new DataOutputStream(
+					new GZIPOutputStream(new BufferedOutputStream(new FileOutputStream(file))));
 		} catch (FileNotFoundException e) {
 			throw new IllegalArgumentException("File could not be created " + file.getAbsolutePath());
+		} catch (IOException e) {
+			throw new IllegalArgumentException("Could not create file " + file.getAbsolutePath());
 		}
-		
-		this.keyJournal = new KeyJournal(KeyJournal.createKeyPathFromPath(file), KeyJournal.Mode.WRITE);
 	}
 	
 	public boolean writeRiakObject(RiakObject riakObject) {
 		try {
 			riakObjectIo.writeRiakObject(this.dataOutputStream, riakObject);
-			keyJournal.write(riakObject);
 		} catch (IOException ex) {
 			log.error("Could not write RiakObject to outputStream", ex);
 			this.close();

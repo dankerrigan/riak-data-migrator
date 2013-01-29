@@ -30,7 +30,6 @@ public class ThreadedRiakObjectReader implements IRiakObjectReader {
 	
 	@SuppressWarnings("unchecked")
 	public ThreadedRiakObjectReader(File file) {
-		
 		this.queue = new LinkedBlockingQueue<RiakObject>(DEFAULT_QUEUE_SIZE);
 		
 		threadFactory.setNextThreadName(String.format("ThreadedRiakObjectReader-%d", threadId++));
@@ -58,11 +57,10 @@ public class ThreadedRiakObjectReader implements IRiakObjectReader {
 
 	@Override
 	public void close() {
-		executor.shutdown();
-		
+		this.executor.shutdown();
 	}
 	
-	private class RiakObjectReaderThread extends RiakObjectReader implements Runnable {
+	private class RiakObjectReaderThread  extends RiakObjectReader implements Runnable {
 		private final Logger log = LoggerFactory.getLogger(RiakObjectReaderThread.class);
 		private final LinkedBlockingQueue<RiakObject> queue;
 		private long count = 0;
@@ -92,8 +90,6 @@ public class ThreadedRiakObjectReader implements IRiakObjectReader {
 			} catch (InterruptedException e) {
 				// no-op, allow to exit
 			}
-			
-			super.close();
 		}
 	}
 

@@ -5,6 +5,7 @@ import java.io.IOException;
 import com.basho.riak.pbc.RiakObject;
 
 public abstract class AbstractClientDataWriter {
+	protected final static int MAX_RETRIES = 3;
 	protected final Connection connection;
 	protected final IClientWriterFactory clientWriterFactory;
 	protected final Iterable<RiakObject> objectSource;

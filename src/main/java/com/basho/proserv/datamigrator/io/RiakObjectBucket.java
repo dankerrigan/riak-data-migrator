@@ -2,6 +2,7 @@ package com.basho.proserv.datamigrator.io;
 
 import java.io.File;
 import java.io.FilenameFilter;
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -109,6 +110,10 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 		
 		return riakObject; 
 	}
+		
+	public File getFileRoot() {
+		return this.fileRoot;
+	}
 	
 	private boolean shouldStartNewChunk() {
 		return (bucketCount % this.bucketChunkSize == 0 || 
@@ -136,6 +141,7 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 	private boolean readNewChunkFile() {
 		File chunkFile = this.fileQueue.poll();
 		if (chunkFile == null) {
+			this.currentRiakObjectReader.close();
 			this.currentRiakObjectReader = null;
 			return false;
 		} else {
@@ -147,6 +153,10 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 	}
 	
 	private void closeChunk() {
+		if (this.currentRiakObjectReader != null) {
+			this.currentRiakObjectReader.close();
+			log.debug("Closed chunk file.");
+		}
 		if (this.currentRiakObjectWriter != null) {
 			this.currentRiakObjectWriter.close();
 			log.debug("Closed chunk file.");
@@ -155,9 +165,6 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 	
 	public void close() {
 		this.closeChunk();
-		if (this.currentRiakObjectReader != null) {
-			this.currentRiakObjectReader.close();
-		}
 	}
 
 	@Override

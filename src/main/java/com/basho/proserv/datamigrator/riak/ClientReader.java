@@ -19,6 +19,7 @@ public class ClientReader implements IClientReader {
 	@Override
 	public RiakObject[] fetchRiakObject(String bucket, String key) 
 			throws IOException {
+		
 		RiakResponse resp = this.connection.riakClient.fetch(bucket, key);
 		IRiakObject[] inObjects = resp.getRiakObjects();
 		RiakObject[] outObjects = new RiakObject[inObjects.length];

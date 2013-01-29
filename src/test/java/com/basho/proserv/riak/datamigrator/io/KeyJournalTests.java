@@ -48,8 +48,10 @@ public class KeyJournalTests {
 	@Test
 	public void testCreateKeyPathFromPath() {
 		File file = new File("/Users/dankerrigan/data.data");
-		File newPath = KeyJournal.createKeyPathFromPath(file);
+		File newPath = KeyJournal.createKeyPathFromPath(file, false);
 		assertTrue(newPath.getAbsolutePath().compareTo("/Users/dankerrigan/data.keys") == 0);
+		newPath = KeyJournal.createKeyPathFromPath(file, true);
+		assertTrue(newPath.getAbsolutePath().compareTo("/Users/dankerrigan/data.loadedkeys") == 0);
 	}
 	
 

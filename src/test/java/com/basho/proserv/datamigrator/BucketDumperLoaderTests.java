@@ -60,7 +60,8 @@ public class BucketDumperLoaderTests {
 		
 		TemporaryFolder tempFolderMaker = new TemporaryFolder();
 		dumpDirectory = tempFolderMaker.newFolder();
-		BucketDumper dumper = new BucketDumper(connection, dumpDirectory, false);
+		BucketDumper dumper = new BucketDumper(connection, dumpDirectory, false, 
+				Runtime.getRuntime().availableProcessors() * 2);
 		
 		int dumpCount = dumper.dumpAllBuckets();
 		
@@ -82,7 +83,8 @@ public class BucketDumperLoaderTests {
 		int deleteCount = deleteTestData(connection);
 		System.out.println("Deleted " + deleteCount + " records");
 		
-		BucketLoader loader = new BucketLoader(connection, dumpDirectory, false);
+		BucketLoader loader = new BucketLoader(connection, dumpDirectory, false,
+				Runtime.getRuntime().availableProcessors() * 2);
 		
 		int loadCount = loader.LoadAllBuckets();
 		

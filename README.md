@@ -15,7 +15,7 @@ target/directory
 Usage:
 ------------------------
 Usage:  
-```java -jar riak-data-migrator-0.1.1.jar [options]```
+```java -jar riak-data-migrator-0.1.2.jar [options]```
 
 Options:  
 -l Set to Load buckets. Cannot be used with d.  
@@ -33,6 +33,10 @@ Options:
         host name is not specified.  
 -p <portNumber> Specify Riak Port. If not specified, defaults to 8087.  
 -v Verbose output, shows number of ops/sec every second
+--riakworkercount Specify the number of workers used to read from/write 
+    to Riak.
+--maxriakconnections Specify the number of connections to maintain
+    in the Riak connection pool. 
 
 Examples:
 -------------------------

@@ -8,6 +8,7 @@ import java.util.Set;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
@@ -31,43 +32,55 @@ public class Main {
 			System.exit(1);
 		}
 		
-		File dataPath = null;
-		List<String> hosts = new ArrayList<String>();
-		int port = 8087;
-		Set<String> buckets = new HashSet<String>();
-		boolean verboseStatusOutput = false;
+		
+		
+		Configuration config = handleCommandLine(cmd);
+		
+		if (cmd.hasOption("l")) {
+			runLoader(config);
+		}
+
+		if (cmd.hasOption("d")) {
+			runDumper(config);
+		}
+		
+	}
+	
+	public static Configuration handleCommandLine(CommandLine cmd) {
+		Configuration config = new Configuration();
 		
 		if (cmd.hasOption("r")) {
-			dataPath = new File(cmd.getOptionValue("r"));
+			File dataPath = new File(cmd.getOptionValue("r"));
 			if (!dataPath.exists()) {
 				System.out.println("Data path " + dataPath.getAbsolutePath() + " does not exist.");
 				System.exit(1);
 			}
+			config.setFilePath(dataPath);
 		} else {
 			System.out.println("Data path was not specified.");
 			System.exit(1);
 		}
 		
 		if (cmd.hasOption("h")) {
-			hosts.add(cmd.getOptionValue("h"));
+			config.addHost(cmd.getOptionValue("h"));
 		}
 		
 		if (cmd.hasOption("c")) {
 			try {
-				hosts.addAll(Utilities.readFileLines(cmd.getOptionValue("c")));
+				config.addHosts(Utilities.readFileLines(cmd.getOptionValue("c")));
 			} catch (Exception e) {
 				System.out.println("Could not read file containting hosts." + e.getMessage());
 				System.exit(1);
 			}
 		}
-		if (hosts.size() == 0) {
+		if (config.getHosts().size() == 0) {
 			System.out.println("No hosts specified");;
 			System.exit(1);
 		}
 		
 		if (cmd.hasOption("p")) {
 			try {
-				port = Integer.parseInt(cmd.getOptionValue("p"));
+				config.setPort(Integer.parseInt(cmd.getOptionValue("p")));
 			} catch (NumberFormatException e) {
 				System.out.println("Port (p) argument is not an integer.");
 				System.exit(1);
@@ -77,52 +90,66 @@ public class Main {
 		}
 		
 		if (cmd.hasOption("b")) {
-			buckets.add(cmd.getOptionValue("b"));
+			config.addBucketName(cmd.getOptionValue("b"));
 		}
 		if (cmd.hasOption("f")) {
 			try {
-				buckets.addAll(Utilities.readFileLines(cmd.getOptionValue("f")));
+				config.addBucketNames(Utilities.readFileLines(cmd.getOptionValue("f")));
 			} catch (Exception e) {
 				System.out.println("Could not read file containing buckets");
 				System.exit(1);
 			}
 		}
-		if (buckets.size() == 0 && !cmd.hasOption("a")) {
+		if (config.getBucketNames().size() == 0 && !cmd.hasOption("a")) {
 			System.out.println("No buckets specified to load");
 			System.exit(1);
 		}
 		if (cmd.hasOption("a")) {
-			buckets = null;
+			if (config.getBucketNames().size() > 0) {
+				System.out.println("Individual buckets specified as well as all buckets.  Dumping all buckets");
+				config.setOperation(Configuration.Operation.ALL_BUCKETS);
+			}
 		}
 		if (cmd.hasOption("v")) {
-			verboseStatusOutput = true;
+			config.setVerboseStatus(true);
 		}
 		
-		if (cmd.hasOption("l")) {
-			runLoader(hosts, port, buckets, dataPath, verboseStatusOutput);
-		}
-
-		if (cmd.hasOption("d")) {
-			runDumper(hosts, port, buckets, dataPath, verboseStatusOutput);
+		if (cmd.hasOption("riakworkercount")) {
+			try {
+				config.setRiakWorkerCount(Integer.parseInt(cmd.getOptionValue("riakworkercount")));
+			} catch (Exception e) {
+				System.out.println("Invalid value specified for riakworkercount");
+				System.exit(1);
+			}
 		}
 		
+		if (cmd.hasOption("maxriakconnections")) {
+			try {
+				config.setMaxRiakConnectionsCount(Integer.parseInt(cmd.getOptionValue("maxriakconnections")));
+			} catch (Exception e) {
+				System.out.println("Invalid value specified for maxriakconnections");
+				System.exit(1);
+			}
+		}
+		return config;
 	}
 
-	public static void runLoader(List<String> hosts, int port, 
-				Set<String> buckets, File path, boolean verboseStatusOutput) {
-		Connection connection = new Connection();
-		if (hosts.size() == 1) {
-			connection.connectPBClient(hosts.get(0), port);
+	public static void runLoader(Configuration config) {
+		Connection connection = new Connection(config.getMaxRiakConnections());
+		
+		if (config.getHosts().size() == 1) {
+			connection.connectPBClient(config.getHosts().toArray(new String[1])[0], config.getPort());
 		} else {
-			connection.connectPBCluster(hosts, port);
+			connection.connectPBCluster(config.getHosts(), config.getPort());
 		}
 		
-		BucketLoader loader = new BucketLoader(connection, path, verboseStatusOutput);
+		BucketLoader loader = new BucketLoader(connection, config.getFilePath(), 
+				config.getVerboseStatus(), config.getRiakWorkerCount());
 		
 		long start = System.currentTimeMillis();
 		int loadCount = 0;
-		if (buckets != null) {
-			loadCount = loader.LoadBuckets(buckets);
+		if (config.getOperation() == Configuration.Operation.BUCKETS) {
+			loadCount = loader.LoadBuckets(config.getBucketNames());
 		} else {
 			loadCount = loader.LoadAllBuckets();
 		}
@@ -135,20 +162,21 @@ public class Main {
 		System.out.println("Loaded " + loadCount + " in " + totalTime + " seconds. " + recsPerSec + " objects/sec");
 	}
 	
-	public static void runDumper(List<String> hosts, int port, Set<String> buckets, File path, boolean verboseStatusOutput) {
-		Connection connection = new Connection();
-		if (hosts.size() == 1) {
-			connection.connectPBClient(hosts.get(0), port);
+	public static void runDumper(Configuration config) {
+		Connection connection = new Connection(config.getMaxRiakConnections());
+		if (config.getHosts().size() == 1) {
+			connection.connectPBClient(config.getHosts().toArray(new String[1])[0], config.getPort());
 		} else {
-			connection.connectPBCluster(hosts, port);
+			connection.connectPBCluster(config.getHosts(), config.getPort());
 		}
 		
-		BucketDumper dumper = new BucketDumper(connection, path, verboseStatusOutput);
+		BucketDumper dumper = new BucketDumper(connection, config.getFilePath(), 
+				config.getVerboseStatus(), config.getRiakWorkerCount());
 		
 		long start = System.currentTimeMillis();
 		int dumpCount = 0;
-		if (buckets != null) {
-			dumpCount = dumper.dumpBuckets(buckets);
+		if (config.getOperation() == Configuration.Operation.BUCKETS) {
+			dumpCount = dumper.dumpBuckets(config.getBucketNames());
 		} else {
 			dumpCount = dumper.dumpAllBuckets();
 		}
@@ -168,7 +196,7 @@ public class Main {
 	}
 	
 	private static CommandLine parseCommandLine(Options options, String[] args) throws ParseException {
-		CommandLineParser parser = new PosixParser();
+		CommandLineParser parser = new GnuParser();
 		CommandLine cmd = parser.parse(options, args);
 		return cmd;
 	}
@@ -188,6 +216,8 @@ public class Main {
 		options.addOption("v", false, "Output verbose status output to the command line");
 		options.addOption("k", false, "Dump keys to file.  Cannot be used with l, d");
 		options.addOption("j", true, "Resume based on previuosly written keys");
+		options.addOption("riakworkercount", true, "Specify Riak Worker Count");
+		options.addOption("maxriakconnections", true, "Specify the max number of connections maintained in the Riak Connection Pool");
 		
 		return options;
 	}

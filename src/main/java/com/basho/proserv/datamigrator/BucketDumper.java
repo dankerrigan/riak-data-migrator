@@ -7,11 +7,15 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.basho.proserv.datamigrator.io.Key;
+import com.basho.proserv.datamigrator.io.KeyJournal;
 import com.basho.proserv.datamigrator.io.RiakObjectBucket;
 import com.basho.proserv.datamigrator.riak.AbstractClientDataReader;
 import com.basho.proserv.datamigrator.riak.ClientReaderFactory;
 import com.basho.proserv.datamigrator.riak.Connection;
+import com.basho.proserv.datamigrator.riak.RiakBucketProperties;
 import com.basho.proserv.datamigrator.riak.ThreadedClientDataReader;
+import com.basho.riak.client.bucket.BucketProperties;
 import com.basho.riak.pbc.RiakObject;
 
 // BucketDumper will only work with clients returning protobuffer objects, ie PBClient
@@ -20,12 +24,14 @@ public class BucketDumper {
 	private final Connection connection;
 	private final File dataRoot;
 	private final boolean verboseStatusOutput;
+	private final int riakWorkerCount;
 	private int errorCount = 0;
 	
 	private long timerStart = System.currentTimeMillis();
 	private long previousCount = 0;
 	
-	public BucketDumper(Connection connection, File dataRoot, boolean verboseStatusOutput) {
+	public BucketDumper(Connection connection, File dataRoot, boolean verboseStatusOutput,
+			int riakWorkerCount) {
 		if (connection == null) {
 			throw new IllegalArgumentException("connection cannot be null");
 		}
@@ -36,6 +42,7 @@ public class BucketDumper {
 		this.connection = connection;
 		this.dataRoot = dataRoot;
 		this.verboseStatusOutput = verboseStatusOutput;
+		this.riakWorkerCount = riakWorkerCount;
 	}
 	
 	public int dumpAllBuckets() {
@@ -48,12 +55,19 @@ public class BucketDumper {
 				++this.errorCount;
 				return 0;
 			}
+		} else {
+			log.error("Not connected to Riak");
+			return 0;
 		}
 		
 		return dumpBuckets(buckets);
 	}
 	
 	public int dumpBuckets(Set<String> bucketNames) {
+		if (!this.connection.connected()) {
+			log.error("Not connected to Riak");
+			return 0;
+		}
 		int objectCount = 0;
 		for (String bucketName : bucketNames) {
 			objectCount += dumpBucket(bucketName);
@@ -65,20 +79,38 @@ public class BucketDumper {
 		if (bucketName == null || bucketName.isEmpty()) {
 			throw new IllegalArgumentException("bucketName cannot be null or empty");
 		}
+
+		if (!this.connection.connected()) {
+			log.error("Not connected to Riak");
+			return 0;
+		}
 		
 		int objectCount = 0;
 		
 		RiakObjectBucket dumpBucket = this.createBucket(bucketName);
-				
+		
+		this.saveBucketSettings(bucketName, dumpBucket.getFileRoot());
+		
+		File keyPath = new File(dumpBucket.getFileRoot().getAbsoluteFile() + "/bucketkeys.keys");
+		this.dumpBucketKeys(bucketName, keyPath);
+		KeyJournal unreadKeyJournal = new KeyJournal(keyPath, KeyJournal.Mode.READ);
+		
+		KeyJournal keyJournal = new KeyJournal(
+				KeyJournal.createKeyPathFromPath(new File(dumpBucket.getFileRoot().getAbsoluteFile() + "/dumpedkeys"), false), 
+				KeyJournal.Mode.WRITE);
+		
 		try {
+			// self closing
 			AbstractClientDataReader reader = new ThreadedClientDataReader(connection,
 					new ClientReaderFactory(), 
-					bucketName, 
-					this.connection.riakClient.listKeys(bucketName));
+					unreadKeyJournal,
+					this.riakWorkerCount);
 			
 			RiakObject riakObject = null;
 			while((riakObject = reader.readObject()) != null) {
 				dumpBucket.writeRiakObject(riakObject);
+				keyJournal.write(riakObject);
+				
 				++objectCount;
 
 				if (this.verboseStatusOutput) {
@@ -86,20 +118,55 @@ public class BucketDumper {
 				}	
 			}
 		} catch (IOException e) {
-			log.error("Riak error listing keys for bucket: " + bucketName);
+			log.error("Riak error dumping objects for bucket: " + bucketName);
+			e.printStackTrace();
 			++errorCount;
 		} finally {
+			keyJournal.close();
 			dumpBucket.close();
 		}
 		
+		unreadKeyJournal.close();
+		
 		return objectCount;
 	}
+	
 	
 	public int errorCount() {
 		return errorCount;
 	}
 	
-
+	private void dumpBucketKeys(String bucketName, File filePath) {
+		KeyJournal keyJournal = new KeyJournal(filePath, KeyJournal.Mode.WRITE);
+		try {
+			Iterable<String> keys = this.connection.riakClient.listKeys(bucketName);
+			for (String keyString : keys) {
+				keyJournal.write(bucketName, keyString);
+			}
+		} catch (IOException e) {
+			log.error("Error listing keys for bucket " + bucketName, e);
+		}
+		keyJournal.close();
+		
+	}
+	
+	private void saveBucketSettings(String bucketName, File path) {
+		File xmlPath = RiakBucketProperties.createBucketSettingsFile(path);
+		RiakBucketProperties riakBucketProps = new RiakBucketProperties(this.connection);
+		BucketProperties bucketProps = riakBucketProps.getBucketProperties(bucketName);
+		boolean success = true;
+		if (bucketProps != null) {
+			success = riakBucketProps.writeBucketProperties(bucketProps, xmlPath);
+			
+		} else {
+			success = false;
+		}
+		if (!success) {
+			log.error("Could not save bucket properties " + bucketName);
+		}
+			
+	}
+	
 	private void printStatus(long objectCount) {
 		long end = System.currentTimeMillis();
 		if (end-timerStart >= 1000) {

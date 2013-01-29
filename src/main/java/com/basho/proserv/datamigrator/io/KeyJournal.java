@@ -91,14 +91,18 @@ public class KeyJournal implements Iterable<Key> {
 		return new KeyIterator(this);
 	}
 	
-	public static File createKeyPathFromPath(File file) {
+	public static File createKeyPathFromPath(File file, boolean load) {
 		String path = file.getAbsolutePath(); 
 		int ind = path.lastIndexOf('.');
 		if (ind == -1) {
 			ind = path.length()-1;
 		}
 		path = path.substring(0, ind);
-		path = path + ".keys";
+		if (load) {
+			path = path + ".loadedkeys";
+		} else {
+			path = path + ".keys";
+		}
 		return new File(path);
 	}
 	

@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.zip.GZIPInputStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,9 +24,12 @@ public class RiakObjectReader implements IRiakObjectReader{
 	
 	public RiakObjectReader(File inputFile) {
 		try {
-			dataInputStream = new DataInputStream(new BufferedInputStream(new FileInputStream(inputFile)));
+			dataInputStream = new DataInputStream(
+					new GZIPInputStream(new BufferedInputStream(new FileInputStream(inputFile))));
 		} catch (FileNotFoundException e) {
 			throw new IllegalArgumentException("File could not be found " + inputFile.getAbsolutePath());
+		} catch (IOException e) {
+			throw new IllegalArgumentException("Could not create file " + inputFile.getAbsolutePath());
 		}
 		
 	}
@@ -44,7 +48,7 @@ public class RiakObjectReader implements IRiakObjectReader{
 		}
 		return null;
 	}
-	
+		
 	public int errorCount() {
 		return this.errorCount;
 	}

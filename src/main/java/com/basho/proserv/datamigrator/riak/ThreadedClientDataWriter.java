@@ -8,11 +8,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.basho.proserv.datamigrator.util.NamedThreadFactory;
 import com.basho.riak.pbc.RiakObject;
 import com.google.protobuf.ByteString;
 
 public class ThreadedClientDataWriter extends AbstractClientDataWriter {
+	private final Logger log = LoggerFactory.getLogger(ThreadedClientDataWriter.class);
 //	public enum Status {SUCCESS, STOPPED, ERROR};
 	private static final int MAX_QUEUE_SIZE = 10000;
 	private static final int WORKER_PROC_MULTIPLER = 2;
@@ -22,7 +26,7 @@ public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 	
 	private final int workerCount;
 	private final LinkedBlockingQueue<RiakObject> objectQueue = 
-			new LinkedBlockingQueue<RiakObject>(MAX_QUEUE_SIZE);;
+			new LinkedBlockingQueue<RiakObject>(MAX_QUEUE_SIZE);
 	private final LinkedBlockingQueue<RiakObject> returnQueue = 
 			new LinkedBlockingQueue<RiakObject>(MAX_QUEUE_SIZE);
 
@@ -44,9 +48,10 @@ public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 			 Runtime.getRuntime().availableProcessors() * WORKER_PROC_MULTIPLER);
 	}
 	
-	ThreadedClientDataWriter(Connection connection,
+	public ThreadedClientDataWriter(Connection connection,
 			IClientWriterFactory clientWriterFactory, 
-			Iterable<RiakObject> objectSource, int workerCount) {
+			Iterable<RiakObject> objectSource, 
+			int workerCount) {
 		super(connection, clientWriterFactory, objectSource);
 		this.workerCount = workerCount;
 		
@@ -82,7 +87,9 @@ public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 			}
 		} catch (InterruptedException e) {
 			//success = false;
-		} finally {
+		}
+		
+		if (riakObject == null) {
 			this.close();
 		}
 		
@@ -171,7 +178,20 @@ public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 						if (object.getBucketBS() == STOP_FLAG) {
 							break;
 						}
-						this.writer.storeRiakObject(object);
+						int retries = 0;
+						while (!Thread.interrupted() && retries < MAX_RETRIES) {
+							try {
+								this.writer.storeRiakObject(object);
+								break;
+							} catch (IOException e) {
+								log.error("Store failed, retrying");
+								++retries;
+								if (retries > MAX_RETRIES) {
+									log.error("Max retries reached");
+									throw e;
+								}
+							}
+						}
 						while (!this.returnQueue.offer(object)) {
 							Thread.sleep(10);
 						}

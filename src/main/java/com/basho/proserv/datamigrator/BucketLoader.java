@@ -8,11 +8,14 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.basho.proserv.datamigrator.io.KeyJournal;
 import com.basho.proserv.datamigrator.io.RiakObjectBucket;
 import com.basho.proserv.datamigrator.riak.AbstractClientDataWriter;
 import com.basho.proserv.datamigrator.riak.ClientWriterFactory;
 import com.basho.proserv.datamigrator.riak.Connection;
+import com.basho.proserv.datamigrator.riak.RiakBucketProperties;
 import com.basho.proserv.datamigrator.riak.ThreadedClientDataWriter;
+import com.basho.riak.client.bucket.BucketProperties;
 import com.basho.riak.pbc.RiakObject;
 
 
@@ -22,13 +25,15 @@ public class BucketLoader {
 	private final Connection connection;
 	private final File dataRoot;
 	private final boolean verboseStatusOutput;
+	private final int riakWorkerCount;
 	private int errorCount = 0;
 	
 	private long timerStart = System.currentTimeMillis();
 	private long previousCount = 0;
 	
 	
-	public BucketLoader(Connection connection, File dataRoot, boolean verboseStatusOutput) {
+	public BucketLoader(Connection connection, File dataRoot, boolean verboseStatusOutput,
+			int riakWorkerCount) {
 		if (connection == null) {
 			throw new IllegalArgumentException("connection cannot be null");
 		}
@@ -39,6 +44,7 @@ public class BucketLoader {
 		this.connection = connection;
 		this.dataRoot = dataRoot;
 		this.verboseStatusOutput = verboseStatusOutput;
+		this.riakWorkerCount = riakWorkerCount;
 		
 	}
 	
@@ -67,21 +73,32 @@ public class BucketLoader {
 		int objectCount = 0;
 		
 		RiakObjectBucket dumpBucket = this.createBucket(bucketName);
-			
+		this.restoreBucketSettings(bucketName, dumpBucket.getFileRoot());
+		
 		AbstractClientDataWriter writer = 
-				new ThreadedClientDataWriter(connection, new ClientWriterFactory(), dumpBucket);
+				new ThreadedClientDataWriter(connection, new ClientWriterFactory(), dumpBucket,
+						this.riakWorkerCount);
+
+		KeyJournal keyJournal = new KeyJournal(
+				KeyJournal.createKeyPathFromPath(new File(this.createBucketPath(bucketName) + "/keys" ), true), 
+					KeyJournal.Mode.WRITE);
+		
 		try {
 			RiakObject riakObject = null;
 			while ((riakObject = writer.writeObject()) != null) {
 				if (this.verboseStatusOutput) {
 					this.printStatus(objectCount);
 				}
+				
+				keyJournal.write(riakObject);
+//				dumpBucket.writeLoadedKey(riakObject);
 				++objectCount;
 			}
 		} catch (IOException e) {
 			log.error("Riak error storing value to " + bucketName, e);
 			++errorCount;
 		} finally {
+			keyJournal.close();
 			dumpBucket.close();
 		}
 		
@@ -95,13 +112,38 @@ public class BucketLoader {
 	public void close() {
 		this.connection.close();
 	}
+
+	public String createBucketPath(String bucketName) {
+		String fullPathname = this.dataRoot.getAbsolutePath() + "/" + bucketName;
+		return fullPathname;
+	}
+	
+	private void restoreBucketSettings(String bucketName, File path) {
+		File xmlPath = RiakBucketProperties.createBucketSettingsFile(path);
+		RiakBucketProperties riakBucketProps = new RiakBucketProperties(this.connection);
+		
+		BucketProperties bucketProps = riakBucketProps.readBucketProperties(xmlPath);
+		
+		boolean success = true;
+		if (bucketProps != null) {
+			success = riakBucketProps.setBucketProperties(bucketName, bucketProps);
+			
+		} else {
+			success = false;
+		}
+		if (!success) {
+			log.error("Could not restore bucket properties " + bucketName);
+		}
+	}
 	
 	private void printStatus(long objectCount) {
 		long end = System.currentTimeMillis();
 		if (end-timerStart >= 1000) {
 			long total = end-timerStart;
 			
-			System.out.print("\rWrote " + (int)((objectCount-this.previousCount)/(total/1000.0)) + " obj/sec          ");
+			String msg = String.format("\rWrote %d @ %d obj/sec          ", objectCount, 
+					(int)((objectCount-this.previousCount)/(total/1000.0)));
+			System.out.print(msg);
 			System.out.flush();
 			
 			this.previousCount = objectCount;
@@ -110,7 +152,7 @@ public class BucketLoader {
 	}
 	
 	private RiakObjectBucket createBucket(String bucketName) {
-		String fullPathname = this.dataRoot.getAbsolutePath() + "/" + bucketName;
+		String fullPathname = this.createBucketPath(bucketName);
 		File fullPath = new File(fullPathname);
 		
 		return new RiakObjectBucket(fullPath, RiakObjectBucket.BucketMode.READ);
@@ -120,7 +162,7 @@ public class BucketLoader {
 		Set<String> buckets = new HashSet<String>();
 		
 		for (String bucketName : this.dataRoot.list()) {
-			String fullPathname = this.dataRoot.getAbsolutePath() + "/" + bucketName;
+			String fullPathname = this.createBucketPath(bucketName);
 			File fullPath = new File(fullPathname);
 			if (fullPath.isDirectory()) {
 				buckets.add(bucketName);
