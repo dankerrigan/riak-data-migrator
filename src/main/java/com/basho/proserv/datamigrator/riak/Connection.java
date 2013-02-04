@@ -1,7 +1,6 @@
 package com.basho.proserv.datamigrator.riak;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -40,6 +39,19 @@ public class Connection {
 	public boolean connected() {
 		return riakClient == null ? false : true;
 	}
+	
+	public boolean testConnection() {
+		if (this.connected()) {
+			try {
+				this.riakClient.ping();
+				return true;
+			} catch (IOException e) {
+				//no-op
+			}
+		}
+		return false;
+	}
+	
 	
 	public PBClusterConfig createPbClusterConfig(Set<String> hosts, int port) {
 		PBClusterConfig pbClusterConfig = new PBClusterConfig(this.maxConnections);

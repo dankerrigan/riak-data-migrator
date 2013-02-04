@@ -14,6 +14,8 @@ import org.slf4j.LoggerFactory;
 import com.basho.proserv.datamigrator.BucketLoader;
 import com.basho.proserv.datamigrator.io.Key;
 import com.basho.proserv.datamigrator.util.NamedThreadFactory;
+import com.basho.riak.client.IRiakObject;
+import com.basho.riak.client.raw.pbc.ConversionUtilWrapper;
 import com.basho.riak.pbc.RiakObject;
 import com.google.protobuf.ByteString;
 
@@ -28,15 +30,19 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 	private final int workerCount;
 	private final LinkedBlockingQueue<Key> keyQueue = 
 			new LinkedBlockingQueue<Key>(MAX_QUEUE_SIZE);
-	private final LinkedBlockingQueue<RiakObject> returnQueue = 
-			new LinkedBlockingQueue<RiakObject>(MAX_QUEUE_SIZE);
+	private final LinkedBlockingQueue<IRiakObject> returnQueue = 
+			new LinkedBlockingQueue<IRiakObject>(MAX_QUEUE_SIZE);
 	
 	private static String ERROR_STRING = "ERRORERRORERROR";
 	private static ByteString ERROR_FLAG = ByteString.copyFromUtf8(ERROR_STRING);
 	private static Key ERROR_KEY = new Key(ERROR_STRING, ERROR_STRING);
+	private static IRiakObject ERROR_OBJECT = ConversionUtilWrapper.convertConcreteToInterface(
+			new RiakObject(ERROR_FLAG, ERROR_FLAG, ERROR_FLAG, ERROR_FLAG));
 	private static String STOP_STRING = "STOPSTOPSTOPSTOPSTOP";
 	private static ByteString STOP_FLAG = ByteString.copyFromUtf8(STOP_STRING);
 	private static Key STOP_KEY = new Key(STOP_STRING, STOP_STRING);
+	private static IRiakObject STOP_OBJECT = ConversionUtilWrapper.convertConcreteToInterface(
+			new RiakObject(STOP_FLAG, STOP_FLAG, STOP_FLAG, STOP_FLAG));
 	
 	private List<Future<Runnable>> threads = new ArrayList<Future<Runnable>>();
 	private int stopCount = 0;
@@ -60,26 +66,25 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 		this.run();
 	}
 	
-	public RiakObject readObject() throws IOException {
-		RiakObject riakObject = null;
+	public IRiakObject readObject() throws IOException {
+		IRiakObject riakObject = null;
 		
 		try {
 			riakObject = this.returnQueue.take();
 			//fast exit if not flag
-			if (riakObject.getBucketBS() == STOP_FLAG ||
-					riakObject.getBucketBS() == ERROR_FLAG) {
+			if (isStop(riakObject) || isError(riakObject)) {
 				while (!Thread.currentThread().isInterrupted()) {
 	//				while ((riakObject = this.returnQueue.poll()) == null) {
 	//					Thread.sleep(10);
 	//				}
 					
-					if (riakObject.getBucketBS() == STOP_FLAG) {
+					if (isStop(riakObject)) {
 						++stopCount;
 						if (this.stopCount == this.workerCount) {
 							riakObject = null;
 							break;
 						}
-					} else if (riakObject.getBucketBS() == ERROR_FLAG) {
+					} else if (isError(riakObject)) {
 						this.interruptWorkers();
 						throw new IOException();
 					} else { 
@@ -90,11 +95,22 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 			}
 		} catch (InterruptedException e) {
 			//no-op, allow to return 
-		} finally {
+		} catch (Throwable t) {
+			t.printStackTrace();
+		}
+		finally {
 			this.close();
 		}
 		
 		return riakObject;
+	}
+	
+	private static boolean isStop(IRiakObject riakObject) {
+		return riakObject.getBucket().compareTo(STOP_STRING) == 0;
+	}
+	
+	private static boolean isError(IRiakObject riakObject) {
+		return riakObject.getBucket().compareTo(ERROR_STRING) == 0;
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -119,7 +135,7 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 	private void close() {
 		this.executor.shutdown();
 	}
-	
+		
 	private class KeyReaderThread implements Runnable {
 
 		private final Iterable<Key> keySource;
@@ -165,11 +181,11 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 
 		private final IClientReader reader;
 		private final LinkedBlockingQueue<Key> keyQueue;
-		private final LinkedBlockingQueue<RiakObject> returnQueue;
+		private final LinkedBlockingQueue<IRiakObject> returnQueue;
 		
 		public ClientReaderThread(IClientReader reader,
 				LinkedBlockingQueue<Key> keyQueue,
-				LinkedBlockingQueue<RiakObject> returnQueue) {
+				LinkedBlockingQueue<IRiakObject> returnQueue) {
 			this.reader = reader;
 			this.keyQueue = keyQueue;
 			this.returnQueue = returnQueue;
@@ -180,18 +196,28 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 			try {
 				try {
 					while (!Thread.currentThread().isInterrupted()) {
-						 Key key = keyQueue.take();
+						 Key key = keyQueue.poll();
+						 if (key == null) {
+							 Thread.sleep(10);
+							 continue;
+						 }
 						 if (key.bucket() == STOP_STRING) {
 							 break;
 						 } else if (key.bucket() == ERROR_STRING) {
-							 returnQueue.put(new RiakObject(ERROR_FLAG, ERROR_FLAG, ERROR_FLAG));
+							 returnQueue.put(ERROR_OBJECT);
 						 }
 						 int retries = 0;
 						 while (!Thread.currentThread().isInterrupted() && retries < MAX_RETRIES) {
 							 try {
 								 RiakObject[] objects = this.reader.fetchRiakObject(key.bucket(), key.key());
-								 for (RiakObject riakObject : objects) {
-									 returnQueue.put(riakObject);
+								 for (RiakObject object : objects) {
+									 IRiakObject riakObject = ConversionUtilWrapper.convertConcreteToInterface(object);
+//									 while (!Thread.interrupted() && !returnQueue.offer(riakObject)) {
+//										 Thread.sleep(10);
+//										 log.info("waiting to put on return queue");
+//									 }
+									
+									returnQueue.put(riakObject);
 								 }
 								 break;
 							 } catch (IOException e) {
@@ -204,9 +230,9 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 							 }
 						 }
 					}
-					returnQueue.put(new RiakObject(STOP_FLAG, STOP_FLAG, STOP_FLAG));
+					returnQueue.put(STOP_OBJECT);
 				} catch (IOException e ) {
-					returnQueue.put(new RiakObject(ERROR_FLAG, ERROR_FLAG, ERROR_FLAG));
+					returnQueue.put(ERROR_OBJECT);
 				}
 			} catch (InterruptedException e) {
 				// no-op, allow to exit

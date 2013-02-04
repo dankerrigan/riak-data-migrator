@@ -11,6 +11,8 @@ import com.basho.proserv.datamigrator.io.Key;
 import com.basho.proserv.datamigrator.io.KeyJournal;
 import com.basho.proserv.datamigrator.io.RiakObjectWriter;
 import com.basho.proserv.datamigrator.io.ThreadedRiakObjectReader;
+import com.basho.riak.client.IRiakObject;
+import com.basho.riak.client.raw.pbc.ConversionUtilWrapper;
 import com.basho.riak.pbc.RiakObject;
 import com.google.protobuf.ByteString;
 
@@ -25,16 +27,19 @@ public class ThreadedRiakObjectReaderTests {
 		RiakObjectWriter writer = new RiakObjectWriter(data);
 		
 		for (int i = 0; i < RECORD_COUNT; ++i) {
-			writer.writeRiakObject(new RiakObject(ByteString.copyFromUtf8(""),
+			IRiakObject riakObject = ConversionUtilWrapper.convertConcreteToInterface(
+					new RiakObject(ByteString.copyFromUtf8(""),
 					ByteString.copyFromUtf8("Bucket"),
-					ByteString.copyFromUtf8("Key")));
+					ByteString.copyFromUtf8("Key"),
+					ByteString.copyFromUtf8("")));
+			writer.writeRiakObject(riakObject);
 		}
 		writer.close();
 		
-		ThreadedRiakObjectReader reader = new ThreadedRiakObjectReader(data);
+		ThreadedRiakObjectReader reader = new ThreadedRiakObjectReader(data, false);
 		
 		
-		RiakObject object = null;
+		IRiakObject object = null;
 		int readCount = 0;
 		while ((object = reader.readRiakObject()) != null) {
 			++readCount;	

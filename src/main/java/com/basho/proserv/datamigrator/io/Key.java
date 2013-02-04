@@ -25,4 +25,23 @@ public class Key {
 		return this.key;
 	}
 	
+	@Override
+	public boolean equals(Object other) {
+		boolean result = false;
+		if (other instanceof Key) {
+			Key otherKey = (Key)other;
+			result = otherKey.key().compareTo(this.key) == 0 &&
+					otherKey.bucket().compareTo(this.bucket) == 0;
+		}
+		return result;
+	}
+	
+	@Override
+	public int hashCode() {
+		if (!errorKey()) {
+			return 41 * (41 + (this.key.hashCode() + this.bucket.hashCode()));
+		} else {
+			return 0;
+		}
+	}
 }

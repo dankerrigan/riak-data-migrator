@@ -8,6 +8,8 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import com.basho.proserv.datamigrator.io.RiakObjectBucket;
+import com.basho.riak.client.IRiakObject;
+import com.basho.riak.client.raw.pbc.ConversionUtilWrapper;
 import com.basho.riak.pbc.RiakObject;
 import com.google.protobuf.ByteString;
 
@@ -25,12 +27,13 @@ public class BucketTests {
 		File rootFolder = tempFolder.newFolder();
 		this.rootPath = rootFolder;
 		
-		RiakObjectBucket writeBucket = new RiakObjectBucket(rootFolder, RiakObjectBucket.BucketMode.WRITE, bucketChunkSize);
+		RiakObjectBucket writeBucket = new RiakObjectBucket(rootFolder, RiakObjectBucket.BucketMode.WRITE, bucketChunkSize, false);
 		
-		RiakObject riakObject = new RiakObject(ByteString.copyFromUtf8(""),
+		IRiakObject riakObject = ConversionUtilWrapper.convertConcreteToInterface(
+				new RiakObject(ByteString.copyFromUtf8(""),
 				   ByteString.copyFromUtf8(""),
 				   ByteString.copyFromUtf8(""),
-				   ByteString.copyFromUtf8(""));
+				   ByteString.copyFromUtf8("")));
 		
 		for (int i = 0; i < this.testRounds; ++i) {
 			writeBucket.writeRiakObject(riakObject);
@@ -44,14 +47,38 @@ public class BucketTests {
 	
 	@Test
 	public void testBucketRead() throws Exception {
-		this.testBucketWrite();
+//		this.testBucketWrite();
+		
+		TemporaryFolder tempFolder = new TemporaryFolder();
+		
+		int bucketChunkSize = 10;
+		
+		File rootFolder = tempFolder.newFolder();
+		this.rootPath = rootFolder;
+		
+		RiakObjectBucket writeBucket = new RiakObjectBucket(rootFolder, RiakObjectBucket.BucketMode.WRITE, bucketChunkSize, false);
+		
+		IRiakObject riakObject = ConversionUtilWrapper.convertConcreteToInterface(
+				new RiakObject(ByteString.copyFromUtf8(""),
+				   ByteString.copyFromUtf8(""),
+				   ByteString.copyFromUtf8(""),
+				   ByteString.copyFromUtf8("")));
+		
+		for (int i = 0; i < this.testRounds; ++i) {
+			writeBucket.writeRiakObject(riakObject);
+		}
+		
+		writeBucket.close();
+		
+		Thread.sleep(1000); // Wait a bit, let the writing thread complete/close the file
+		
 		assertTrue(this.rootPath != null);
 		
-		RiakObjectBucket readBucket = new RiakObjectBucket(this.rootPath, RiakObjectBucket.BucketMode.READ);
+		RiakObjectBucket readBucket = new RiakObjectBucket(this.rootPath, RiakObjectBucket.BucketMode.READ, false);
 		
 		int readCount = 0;
-		@SuppressWarnings("unused")
-		RiakObject riakObject = null;
+//		@SuppressWarnings("unused")
+//		IRiakObject riakObject = null;
 		while ((riakObject = readBucket.readRiakObject()) != null) {
 			++readCount;
 		}

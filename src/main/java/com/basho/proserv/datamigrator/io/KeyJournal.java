@@ -11,6 +11,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.Iterator;
 
+import com.basho.riak.client.IRiakObject;
 import com.basho.riak.pbc.RiakObject;
 
 public class KeyJournal implements Iterable<Key> {
@@ -50,6 +51,10 @@ public class KeyJournal implements Iterable<Key> {
 	}
 	
 	public void write(RiakObject riakObject) throws IOException {
+		this.write(riakObject.getBucket(), riakObject.getKey());
+	}
+	
+	public void write(IRiakObject riakObject) throws IOException {
 		this.write(riakObject.getBucket(), riakObject.getKey());
 	}
 	

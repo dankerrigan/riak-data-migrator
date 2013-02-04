@@ -7,6 +7,8 @@ import java.util.List;
 
 import org.junit.Test;
 
+import com.basho.riak.client.IRiakObject;
+import com.basho.riak.client.raw.pbc.ConversionUtilWrapper;
 import com.basho.riak.pbc.RiakObject;
 import com.google.protobuf.ByteString;
 
@@ -20,9 +22,9 @@ public class ThreadedClientDataWriterTests {
 		
 		ByteString data = ByteString.copyFromUtf8("DATA");
 		
-		List<RiakObject> dummyObjects = new ArrayList<RiakObject>();
+		List<IRiakObject> dummyObjects = new ArrayList<IRiakObject>();
 		for (Integer i = 0; i < TEST_SIZE; ++i) {
-			dummyObjects.add(new RiakObject(data, data, data));
+			dummyObjects.add(ConversionUtilWrapper.convertConcreteToInterface(new RiakObject(data, data, data, data)));
 		}
 		
 		ThreadedClientDataWriter writer = new ThreadedClientDataWriter(connection,
@@ -32,7 +34,7 @@ public class ThreadedClientDataWriterTests {
 		int writtenCount = 0;
 		
 		@SuppressWarnings("unused")
-		RiakObject riakObject = null;
+		IRiakObject riakObject = null;
 		while ((riakObject = writer.writeObject()) != null) {
 			++writtenCount;
 		}

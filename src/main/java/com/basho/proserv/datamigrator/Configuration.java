@@ -7,26 +7,31 @@ import java.util.Set;
 
 public class Configuration {
 	private static int RIAK_WORKER_MULTIPLIER = 2;
-	
+	private static int RIAK_CLUSTER_CONNECTION_MULTIPLIER = 4;
+	private static int DEFAULT_RIAK_PB_PORT = 8087;
+	private static int DEFAULT_RIAK_HTTP_PORT = 8098;
 	public static enum Mode { LOAD, DUMP };
 	public static enum Operation { ALL_BUCKETS, BUCKETS, ALL_KEYS, BUCKET_KEYS };
 
 	
+	
 	private Mode mode = Mode.LOAD;
 	private Operation operation = Operation.ALL_BUCKETS;
+	private boolean resume = false;
 	private File filePath = new File("./");
 
 	private Set<String> hosts = new HashSet<String>();
 	
-	private int port = 8087;
-	private int httpPort = 8098;
+	private int port = DEFAULT_RIAK_PB_PORT;
+	private int httpPort = DEFAULT_RIAK_HTTP_PORT;
 	
 	private Set<String> bucketNames = new HashSet<String>();
 	
 	private boolean verboseStatus = false;
+	private boolean resetVClock = false;
 	
 	private int riakWorkerCount = Runtime.getRuntime().availableProcessors() * RIAK_WORKER_MULTIPLIER;
-	private int maxRiakConnections = riakWorkerCount * 4;
+	private int maxRiakConnections = riakWorkerCount * RIAK_CLUSTER_CONNECTION_MULTIPLIER;
 	
 	public void setMode(Mode mode) {
 		this.mode = mode;
@@ -40,6 +45,13 @@ public class Configuration {
 	}
 	public Operation getOperation() {
 		return this.operation;
+	}
+	
+	public boolean getResume() {
+		return this.resume;
+	}
+	public void setResume(boolean resume) {
+		this.resume = resume;
 	}
 	
 	public void setFilePath(File filePath) {
@@ -90,9 +102,16 @@ public class Configuration {
 		return this.verboseStatus;
 	}
 	
+	public void setResetVClock(boolean resetVClock) {
+		this.resetVClock = resetVClock;
+	}
+	public boolean getResetVClock() {
+		return this.resetVClock;
+	}
+	
 	public void setRiakWorkerCount(int riakWorkerCount) {
 		this.riakWorkerCount = riakWorkerCount;
-		this.maxRiakConnections = riakWorkerCount * 4;
+		this.maxRiakConnections = riakWorkerCount * RIAK_CLUSTER_CONNECTION_MULTIPLIER;
 	}
 	public int getRiakWorkerCount() {
 		return this.riakWorkerCount;

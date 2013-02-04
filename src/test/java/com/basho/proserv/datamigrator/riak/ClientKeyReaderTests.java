@@ -8,7 +8,7 @@ import java.util.List;
 import org.junit.Test;
 
 import com.basho.proserv.datamigrator.io.Key;
-import com.basho.riak.pbc.RiakObject;
+import com.basho.riak.client.IRiakObject;
 
 public class ClientKeyReaderTests {
 
@@ -32,7 +32,7 @@ public class ClientKeyReaderTests {
 		int readCount = 0;
 		
 		@SuppressWarnings("unused")
-		RiakObject object = null;
+		IRiakObject object = null;
 		while ((object = reader.readObject()) != null) {
 			++readCount;
 		}

@@ -9,6 +9,7 @@ import java.util.List;
 import org.junit.Test;
 
 import com.basho.proserv.datamigrator.io.Key;
+import com.basho.riak.client.IRiakObject;
 import com.basho.riak.pbc.RiakObject;
 
 
@@ -35,9 +36,12 @@ public class ThreadedClientDataReaderTests {
 		int readCount = 0;
 		
 		@SuppressWarnings("unused")
-		RiakObject object = null;
+		IRiakObject object = null;
 		while ((object = reader.readObject()) != null) {
 			++readCount;
+			if (readCount == TEST_SIZE) {
+				System.out.println("Test should be finished");
+			}
 		}
 		
 		assertTrue(readCount == TEST_SIZE);

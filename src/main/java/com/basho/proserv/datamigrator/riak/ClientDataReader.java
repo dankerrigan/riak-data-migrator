@@ -11,12 +11,14 @@ import org.slf4j.LoggerFactory;
 
 import com.basho.proserv.datamigrator.BucketDumper;
 import com.basho.proserv.datamigrator.io.Key;
+import com.basho.riak.client.IRiakObject;
+import com.basho.riak.client.raw.pbc.ConversionUtilWrapper;
 import com.basho.riak.pbc.RiakObject;
 
 public class ClientDataReader extends AbstractClientDataReader {
 	private final Logger log = LoggerFactory.getLogger(BucketDumper.class);
 	
-	private final Queue<RiakObject> queuedObjects = new LinkedBlockingQueue<RiakObject>();
+	private final Queue<IRiakObject> queuedObjects = new LinkedBlockingQueue<IRiakObject>();
 	private final IClientReader reader;
 	private final Iterator<Key> keyIterator;
 	
@@ -31,7 +33,7 @@ public class ClientDataReader extends AbstractClientDataReader {
 
 	
 	@Override
-	public RiakObject readObject() throws IOException {
+	public IRiakObject readObject() throws IOException {
 		if (queuedObjects.isEmpty()) {
 			int retries = 0;
 			while (retries < MAX_RETRIES) {
@@ -40,7 +42,8 @@ public class ClientDataReader extends AbstractClientDataReader {
 					RiakObject[] objects = this.reader.fetchRiakObject(key.bucket(), key.key());
 					
 					for (RiakObject obj : objects) {
-						queuedObjects.add(obj);
+						IRiakObject riakObject = ConversionUtilWrapper.convertConcreteToInterface(obj);
+						queuedObjects.add(riakObject);
 					}
 					break;
 				} catch (NoSuchElementException e) { // iterator finished

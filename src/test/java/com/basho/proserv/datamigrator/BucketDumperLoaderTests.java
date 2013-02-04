@@ -15,6 +15,7 @@ public class BucketDumperLoaderTests {
 
 	private String host = "127.0.0.1";
 	private int port = 18087;
+	private int httpPort = 18098;
 	
 	File dumpDirectory = null;
 	
@@ -54,16 +55,18 @@ public class BucketDumperLoaderTests {
 	@Test
 	public void testDump() throws Exception {
 		Connection connection = new Connection();
+		Connection httpConnection = new Connection();
 		connection.connectPBClient(host, port);
+		httpConnection.connectHTTPClient(host, httpPort);
 		int count = loadTestData(connection);
 		System.out.println("Loaded " + count + " records");
 		
 		TemporaryFolder tempFolderMaker = new TemporaryFolder();
 		dumpDirectory = tempFolderMaker.newFolder();
-		BucketDumper dumper = new BucketDumper(connection, dumpDirectory, false, 
+		BucketDumper dumper = new BucketDumper(connection, httpConnection, dumpDirectory, false, 
 				Runtime.getRuntime().availableProcessors() * 2);
 		
-		int dumpCount = dumper.dumpAllBuckets();
+		long dumpCount = dumper.dumpAllBuckets(false, false);
 		
 		System.out.println("Dumped " + dumpCount + " with " + dumper.errorCount() + " errors");
 		
@@ -78,15 +81,17 @@ public class BucketDumperLoaderTests {
 	public void testLoad() throws Exception {
 		testDump();
 		Connection connection = new Connection();
+		Connection httpConnection = new Connection();
 		connection.connectPBClient(host, port);
+		httpConnection.connectHTTPClient(host, httpPort);
 		
 		int deleteCount = deleteTestData(connection);
 		System.out.println("Deleted " + deleteCount + " records");
 		
-		BucketLoader loader = new BucketLoader(connection, dumpDirectory, false,
-				Runtime.getRuntime().availableProcessors() * 2);
+		BucketLoader loader = new BucketLoader(connection, httpConnection, dumpDirectory, false,
+				Runtime.getRuntime().availableProcessors() * 2, false);
 		
-		int loadCount = loader.LoadAllBuckets();
+		long loadCount = loader.LoadAllBuckets();
 		
 		System.out.println("Loaded " + loadCount + " records");
 		

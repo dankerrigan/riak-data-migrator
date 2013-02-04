@@ -2,8 +2,8 @@ package com.basho.proserv.datamigrator.riak;
 
 import java.io.IOException;
 
-import com.basho.riak.pbc.RiakObject;
+import com.basho.riak.client.IRiakObject;
 
 public interface IClientWriter {
-	public RiakObject storeRiakObject(RiakObject riakObject) throws IOException;
+	public IRiakObject storeRiakObject(IRiakObject riakObject) throws IOException;
 }

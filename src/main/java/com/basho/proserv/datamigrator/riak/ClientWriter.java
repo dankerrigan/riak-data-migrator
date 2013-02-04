@@ -2,9 +2,7 @@ package com.basho.proserv.datamigrator.riak;
 
 import java.io.IOException;
 
-import com.basho.riak.pbc.RiakObject;
-
-import static com.basho.riak.client.raw.pbc.ConversionUtilWrapper.convertConcreteToInterface;
+import com.basho.riak.client.IRiakObject;
 
 public class ClientWriter implements IClientWriter {
 
@@ -15,8 +13,8 @@ public class ClientWriter implements IClientWriter {
 	}
 	
 	@Override
-	public RiakObject storeRiakObject(RiakObject riakObject) throws IOException {
-		this.connection.riakClient.store(convertConcreteToInterface(riakObject));
+	public IRiakObject storeRiakObject(IRiakObject riakObject) throws IOException {
+		this.connection.riakClient.store(riakObject);
 		return riakObject;
 	}
 

@@ -11,6 +11,8 @@ import java.util.zip.GZIPOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.basho.riak.client.IRiakObject;
+import com.basho.riak.client.raw.pbc.ConversionUtilWrapper;
 import com.basho.riak.pbc.RiakObject;
 import com.basho.riak.pbc.RiakObjectIO;
 import com.google.protobuf.ByteString;
@@ -32,9 +34,10 @@ public class RiakObjectWriter implements IRiakObjectWriter {
 		}
 	}
 	
-	public boolean writeRiakObject(RiakObject riakObject) {
+	public boolean writeRiakObject(IRiakObject riakObject) {
 		try {
-			riakObjectIo.writeRiakObject(this.dataOutputStream, riakObject);
+			RiakObject object = ConversionUtilWrapper.convertInterfaceToConcrete(riakObject);
+			riakObjectIo.writeRiakObject(this.dataOutputStream, object);
 		} catch (IOException ex) {
 			log.error("Could not write RiakObject to outputStream", ex);
 			this.close();

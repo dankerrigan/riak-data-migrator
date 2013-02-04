@@ -26,10 +26,11 @@ public class RiakObjectReaderWriterTests {
 		TemporaryFolder tempFolder = new TemporaryFolder();
 		int objectCount = 5;
 		
-		RiakObject riakObject = new RiakObject(ByteString.copyFromUtf8(""),
+		IRiakObject riakObject = ConversionUtilWrapper.convertConcreteToInterface(
+				new RiakObject(ByteString.copyFromUtf8(""),
 				   ByteString.copyFromUtf8(""),
 				   ByteString.copyFromUtf8(""),
-				   ByteString.copyFromUtf8(""));
+				   ByteString.copyFromUtf8("")));
 		
 		File dataFile = tempFolder.newFile();
 		File keys = tempFolder.newFile();
@@ -41,9 +42,9 @@ public class RiakObjectReaderWriterTests {
 		
 		writer.close();
 		
-		RiakObjectReader reader = new RiakObjectReader(dataFile);
+		RiakObjectReader reader = new RiakObjectReader(dataFile, false);
 		@SuppressWarnings("unused")
-		RiakObject readRiakObject = null;
+		IRiakObject readRiakObject = null;
 		
 		int readCount = 0;
 		while((readRiakObject = reader.readRiakObject()) != null) {
@@ -72,8 +73,7 @@ public class RiakObjectReaderWriterTests {
 		builder.withVClock("1234567890".getBytes());
 //		builder.withVtag("175xDv0I3UFCfGRC7K7U9z");
 		
-		IRiakObject iRiakObject = builder.build();
-		RiakObject riakObject = ConversionUtilWrapper.convertInterfaceToConcrete(iRiakObject);
+		IRiakObject riakObject = builder.build();
 		
 		File dataFile = tempFolder.newFile();
 		File keys = tempFolder.newFile();
@@ -83,9 +83,8 @@ public class RiakObjectReaderWriterTests {
 		
 		writer.close();
 		
-		RiakObjectReader reader = new RiakObjectReader(dataFile);
-		RiakObject readRiakObject = reader.readRiakObject();
-		IRiakObject readObject = ConversionUtilWrapper.convertConcreteToInterface(readRiakObject);
+		RiakObjectReader reader = new RiakObjectReader(dataFile, false);
+		IRiakObject readObject = reader.readRiakObject();
 		
 		Set<Integer> intIndex = readObject.getIntIndex("index1");
 		Set<String> strIndex = readObject.getBinIndex("index2");
@@ -108,6 +107,34 @@ public class RiakObjectReaderWriterTests {
 		//last modified not carried
 		assertTrue(value.compareTo("value")==0);
 		assertTrue(vClock.compareTo("1234567890") == 0);
+		//assertTrue(vTag.compareTo("175xDv0I3UFCfGRC7K7U9z")==0);
+		
+		reader.close();
+		
+		reader = new RiakObjectReader(dataFile, true);
+		readObject = reader.readRiakObject();
+		
+		intIndex = readObject.getIntIndex("index1");
+		strIndex = readObject.getBinIndex("index2");
+		links = readObject.getLinks();
+		userMeta = readObject.getUsermeta("metaKey");
+		contentType = readObject.getContentType();
+//		lastModified = readObject.getLastModified();
+		vClock = readObject.getVClockAsString();
+		value = readObject.getValueAsString();
+//		vTag = readObject.getVtag();
+		
+		assertTrue(intIndex.toArray(new Integer[1])[0] == 1);
+		assertTrue(strIndex.toArray(new String[1])[0].compareTo("index2") == 0);
+		link = links.get(0);
+		assertTrue(link.getBucket().compareTo("linkedBucket") == 0);
+		assertTrue(link.getKey().compareTo("linkedKey") == 0);
+		assertTrue(link.getTag().compareTo("linkedTag") == 0);
+		assertTrue(userMeta.compareTo("metaValue") == 0);
+		assertTrue(contentType.split(";")[0].trim().compareTo("content-type") == 0);
+		//last modified not carried
+		assertTrue(value.compareTo("value")==0);
+//		assertTrue(vClock.compareTo("1234567890") == 0);
 		//assertTrue(vTag.compareTo("175xDv0I3UFCfGRC7K7U9z")==0);
 		
 		reader.close();

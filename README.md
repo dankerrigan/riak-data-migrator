@@ -15,11 +15,12 @@ target/directory
 Usage:
 ------------------------
 Usage:  
-```java -jar riak-data-migrator-0.1.2.jar [options]```
+```java -jar riak-data-migrator-0.1.3.jar [options]```
 
 Options:  
--l Set to Load buckets. Cannot be used with d.  
--d Set to Dump buckets. Cannot be used with l.  
+-l Set to Load buckets. Cannot be used with d or k.  
+-d Set to Dump buckets. Cannot be used with l or k.  
+-k Set to Dump bucket keys. Cannot be used with d or l.
 -r <path> Set the path for data to be loaded to or dumped from.
         The path must exist and is required.  
 -a Load or Dump all buckets.  
@@ -31,7 +32,8 @@ Options:
 -c <clusterNameFile.txt> Specify a file containing line delimited Riak
         Cluster Host Names. Required if a host name is not specified.
         host name is not specified.  
--p <portNumber> Specify Riak Port. If not specified, defaults to 8087.  
+-p <pbcPortNumber> Specify Riak Protocol Buffers Port. If not specified, defaults to 8087.
+-H <httpPortNumber> Specify Riak HTTP Port. If not specified, defaults to 8098.
 -v Verbose output, shows number of ops/sec every second
 --riakworkercount Specify the number of workers used to read from/write 
     to Riak.
@@ -41,16 +43,16 @@ Options:
 Examples:
 -------------------------
 Dump all buckets from Riak:  
-```java -jar riak-data-migrator-0.1.1.jar -d -r /var/riak_export -a -h 127.0.0.1 -p 8087```
+```java -jar riak-data-migrator-0.1.3.jar -d -r /var/riak_export -a -h 127.0.0.1 -p 8087 -H 8098```
 
 Load all buckets previously dumped back into Riak:  
-```java -jar riak-data-migrator-0.1.1.jar -l -r /var/riak-export -a -h 127.0.0.1 -p 8087```
+```java -jar riak-data-migrator-0.1.3.jar -l -r /var/riak-export -a -h 127.0.0.1 -p 8087 -H 8098```
 
 Dump buckets listed in a line delimited file from a Riak cluster:  
 
 <pre>
-java -jar riak-data-migrator-0.1.1.jar -d -f /home/riakadmin/buckets_to_export.txt -r \  
-/var/riak-export -c /home/riakadmin/riak_hosts.txt -p 8087
+java -jar riak-data-migrator-0.1.3.jar -d -f /home/riakadmin/buckets_to_export.txt -r \  
+/var/riak-export -c /home/riakadmin/riak_hosts.txt -p 8087 -H 8098
 </pre>
 
 Caveats:

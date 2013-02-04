@@ -12,6 +12,10 @@ import java.util.zip.GZIPInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.basho.riak.client.IRiakObject;
+import com.basho.riak.client.builders.RiakObjectBuilder;
+import com.basho.riak.client.query.indexes.RiakIndexes;
+import com.basho.riak.client.raw.pbc.ConversionUtilWrapper;
 import com.basho.riak.pbc.RiakObject;
 import com.basho.riak.pbc.RiakObjectIO;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -20,23 +24,41 @@ public class RiakObjectReader implements IRiakObjectReader{
 	private final Logger log = LoggerFactory.getLogger(RiakObjectReader.class);
 	private final RiakObjectIO riakObjectIo = new RiakObjectIO();
 	private DataInputStream dataInputStream = null;
+	private final boolean resetVClock;
 	private int errorCount = 0;
 	
-	public RiakObjectReader(File inputFile) {
+	public RiakObjectReader(File inputFile, boolean resetVClock) {
+		this.resetVClock = resetVClock;
 		try {
 			dataInputStream = new DataInputStream(
 					new GZIPInputStream(new BufferedInputStream(new FileInputStream(inputFile))));
 		} catch (FileNotFoundException e) {
 			throw new IllegalArgumentException("File could not be found " + inputFile.getAbsolutePath());
 		} catch (IOException e) {
-			throw new IllegalArgumentException("Could not create file " + inputFile.getAbsolutePath());
+			throw new IllegalArgumentException("Could not open file " + inputFile.getAbsolutePath());
 		}
 		
 	}
 	
-	public RiakObject readRiakObject() {
+	public IRiakObject readRiakObject() {
 		try {
-			return riakObjectIo.readRiakObject(this.dataInputStream);
+			RiakObject riakObject = riakObjectIo.readRiakObject(this.dataInputStream);
+			IRiakObject object = ConversionUtilWrapper.convertConcreteToInterface(riakObject);
+			if (this.resetVClock) {
+				RiakObjectBuilder builder = 
+						RiakObjectBuilder.newBuilder(riakObject.getBucket(), riakObject.getKey());
+//				builder.withVClock(object.getVClock()); //stripping vclock
+		        builder.withContentType(object.getContentType());
+//				builder.withLastModified(object.getLastModified().getTime()); // no preserved in pbc conversion
+		        builder.withValue(object.getValue());
+		        builder.withLinks(object.getLinks());
+		        builder.withIndexes(new RiakIndexes(object.allBinIndexes(), object.allIntIndexes()));
+		        builder.withUsermeta(object.getMeta());
+		        IRiakObject newObject = builder.build();
+		        return newObject;
+			} else {
+				return object;
+			}
 		} catch (InvalidProtocolBufferException e) {
 			log.error("readRiakObject protocol buffer exception", e);
 			++this.errorCount;
