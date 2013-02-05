@@ -83,7 +83,7 @@ public class BucketLoader {
 		this.previousCount = 0;
 		
 		RiakObjectBucket dumpBucket = this.createBucket(bucketName);
-		this.restoreBucketSettings(bucketName, dumpBucket.getFileRoot());
+//		this.restoreBucketSettings(bucketName, dumpBucket.getFileRoot());
 		File keyPath = new File(dumpBucket.getFileRoot().getAbsoluteFile() + "/bucketkeys.keys");
 		long keyCount = this.scanKeysForBucketSize(keyPath);
 		

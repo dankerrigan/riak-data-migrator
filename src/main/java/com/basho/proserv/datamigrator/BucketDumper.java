@@ -117,7 +117,7 @@ public class BucketDumper {
 		
 		KeyJournal bucketKeys = new KeyJournal(keyPath, KeyJournal.Mode.READ);
 				
-		this.saveBucketSettings(bucketName, dumpBucket.getFileRoot());
+//		this.saveBucketSettings(bucketName, dumpBucket.getFileRoot());
 		
 		KeyJournal keyJournal = new KeyJournal(
 				dumpedKeyPath, 
