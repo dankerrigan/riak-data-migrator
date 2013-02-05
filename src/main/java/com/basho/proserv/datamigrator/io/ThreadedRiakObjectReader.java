@@ -96,6 +96,8 @@ public class ThreadedRiakObjectReader implements IRiakObjectReader {
 			} catch (InterruptedException e) {
 				// no-op, allow to exit
 			}
+
+			super.close();
 		}
 	}
 

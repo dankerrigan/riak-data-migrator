@@ -70,9 +70,10 @@ public class ThreadedRiakObjectWriter implements IRiakObjectWriter {
 		public void run() {
 			try {
 				while (!Thread.currentThread().isInterrupted()) {
-					IRiakObject riakObject = null;
-					while ((riakObject = queue.poll()) == null) {
+					IRiakObject riakObject = queue.poll();
+					if (riakObject == null) {
 						Thread.sleep(10);
+						continue;
 					}
 					if (riakObject.getBucket().compareTo(STOP_STRING) == 0) {
 						break;

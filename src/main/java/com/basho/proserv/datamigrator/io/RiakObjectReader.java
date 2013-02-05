@@ -37,7 +37,6 @@ public class RiakObjectReader implements IRiakObjectReader{
 		} catch (IOException e) {
 			throw new IllegalArgumentException("Could not open file " + inputFile.getAbsolutePath());
 		}
-		
 	}
 	
 	public IRiakObject readRiakObject() {
@@ -52,7 +51,7 @@ public class RiakObjectReader implements IRiakObjectReader{
 //				builder.withLastModified(object.getLastModified().getTime()); // no preserved in pbc conversion
 		        builder.withValue(object.getValue());
 		        builder.withLinks(object.getLinks());
-		        builder.withIndexes(new RiakIndexes(object.allBinIndexes(), object.allIntIndexes()));
+		        builder.withIndexes(new RiakIndexes(object.allBinIndexes(), object.allIntIndexesV2()));//object.allIntIndexes()));
 		        builder.withUsermeta(object.getMeta());
 		        IRiakObject newObject = builder.build();
 		        return newObject;

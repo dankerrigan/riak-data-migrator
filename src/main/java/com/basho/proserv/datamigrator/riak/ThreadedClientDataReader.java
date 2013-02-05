@@ -70,13 +70,16 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 		IRiakObject riakObject = null;
 		
 		try {
-			riakObject = this.returnQueue.take();
+//			riakObject = this.returnQueue.take();
+			while ((riakObject = this.returnQueue.poll()) == null) {
+				log.debug("waiting on return");
+				Thread.sleep(10);
+			}
+			
 			//fast exit if not flag
 			if (isStop(riakObject) || isError(riakObject)) {
 				while (!Thread.currentThread().isInterrupted()) {
-	//				while ((riakObject = this.returnQueue.poll()) == null) {
-	//					Thread.sleep(10);
-	//				}
+
 					
 					if (isStop(riakObject)) {
 						++stopCount;
@@ -210,14 +213,11 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 						 while (!Thread.currentThread().isInterrupted() && retries < MAX_RETRIES) {
 							 try {
 								 RiakObject[] objects = this.reader.fetchRiakObject(key.bucket(), key.key());
-								 for (RiakObject object : objects) {
-									 IRiakObject riakObject = ConversionUtilWrapper.convertConcreteToInterface(object);
-//									 while (!Thread.interrupted() && !returnQueue.offer(riakObject)) {
-//										 Thread.sleep(10);
-//										 log.info("waiting to put on return queue");
-//									 }
-									
-									returnQueue.put(riakObject);
+								 for (int i = 0; i < objects.length; ++i) {
+									 IRiakObject riakObject = ConversionUtilWrapper.convertConcreteToInterface(objects[i]);
+									 while (!Thread.interrupted() && !returnQueue.offer(riakObject)) {
+										 Thread.sleep(10);
+									 }
 								 }
 								 break;
 							 } catch (IOException e) {
