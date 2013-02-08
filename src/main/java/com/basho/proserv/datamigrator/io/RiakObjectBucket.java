@@ -142,7 +142,7 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 		String filename = this.fileRoot.getAbsolutePath() + "/" 
 				+ this.filePrefix + this.bucketCount.toString() + ".data";
 		log.debug("Creating new chunk file " + filename);
-		this.currentRiakObjectWriter = new RiakObjectWriter(new File(filename));
+		this.currentRiakObjectWriter = new ThreadedRiakObjectWriter(new File(filename));
 		return true;
 	}
 	

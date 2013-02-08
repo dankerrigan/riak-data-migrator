@@ -4,7 +4,7 @@ import java.io.File;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ArrayBlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +25,7 @@ public class ThreadedRiakObjectReader implements IRiakObjectReader {
 			new RiakObject(STOP_FLAG, STOP_FLAG, STOP_FLAG, STOP_FLAG));
 	
 	private final boolean resetVClock;
-	private final LinkedBlockingQueue<IRiakObject> queue;
+	private final ArrayBlockingQueue<IRiakObject> queue;
 	private final NamedThreadFactory threadFactory = new NamedThreadFactory();
 	private final ExecutorService executor = Executors.newCachedThreadPool(threadFactory);
 	
@@ -37,7 +37,7 @@ public class ThreadedRiakObjectReader implements IRiakObjectReader {
 	@SuppressWarnings("unchecked")
 	public ThreadedRiakObjectReader(File file, boolean resetVClock) {
 		this.resetVClock = resetVClock;
-		this.queue = new LinkedBlockingQueue<IRiakObject>(DEFAULT_QUEUE_SIZE);
+		this.queue = new ArrayBlockingQueue<IRiakObject>(DEFAULT_QUEUE_SIZE);
 		
 		threadFactory.setNextThreadName(String.format("ThreadedRiakObjectReader-%d", threadId++));
 		this.readerFuture = (Future<Runnable>) executor.submit(
@@ -70,10 +70,10 @@ public class ThreadedRiakObjectReader implements IRiakObjectReader {
 	
 	private class RiakObjectReaderThread  extends RiakObjectReader implements Runnable {
 		private final Logger log = LoggerFactory.getLogger(RiakObjectReaderThread.class);
-		private final LinkedBlockingQueue<IRiakObject> queue;
+		private final ArrayBlockingQueue<IRiakObject> queue;
 		private long count = 0;
 		
-		public RiakObjectReaderThread(File file, LinkedBlockingQueue<IRiakObject> queue, boolean resetVClock) {
+		public RiakObjectReaderThread(File file, ArrayBlockingQueue<IRiakObject> queue, boolean resetVClock) {
 			super(file, resetVClock);
 			this.queue = queue;
 		}

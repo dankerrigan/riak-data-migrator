@@ -37,10 +37,23 @@
   						<classpathPrefix>lib/</classpathPrefix>
   						<mainClass>com.basho.proserv.datamigrator.Main</mainClass>
   					</manifest>
+			        <manifestEntries>
+			            <Class-Path>conf/</Class-Path>
+			        </manifestEntries>
   				</archive>
   			</configuration>
   		</plugin>
   	</plugins>
+	<resources>
+	    <resource>
+	        <directory>src/main/resources</directory>
+	        <excludes>
+	            <exclude>logback.xml</exclude>
+	            <exclude>logback-test.xml</exclude>
+	        </excludes>
+	        <filtering>false</filtering>
+	    </resource>
+	</resources>
   </build>
   <dependencies>
   	<dependency>
@@ -51,11 +64,6 @@
   	<dependency>
   		<groupId>org.slf4j</groupId>
   		<artifactId>slf4j-api</artifactId>
-  		<version>1.7.2</version>
-  	</dependency>
-  	<dependency>
-  		<groupId>org.slf4j</groupId>
-  		<artifactId>slf4j-simple</artifactId>
   		<version>1.7.2</version>
   	</dependency>
   	<dependency>
@@ -72,6 +80,11 @@
   		<groupId>com.thoughtworks.xstream</groupId>
   		<artifactId>xstream</artifactId>
   		<version>1.4.4</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>ch.qos.logback</groupId>
+  		<artifactId>logback-classic</artifactId>
+  		<version>1.0.9</version>
   	</dependency>
   </dependencies>
 </project>

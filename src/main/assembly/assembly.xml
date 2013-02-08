@@ -28,6 +28,13 @@
             </includes>
         </fileSet>
         <fileSet>
+        	<directory>${basedir}/src/main/resources/</directory>
+        	<outputDirectory>conf</outputDirectory>
+        	<includes>
+        		<include>logback.xml</include>
+        	</includes>
+        </fileSet>
+        <fileSet>
         	<directory></directory>
         	<outputDirectory></outputDirectory>
         	<includes>

@@ -3,7 +3,7 @@ package com.basho.proserv.datamigrator.io;
 import java.io.File;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ArrayBlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +22,7 @@ public class ThreadedRiakObjectWriter implements IRiakObjectWriter {
 	private static final ByteString STOP_FLAG = ByteString.copyFromUtf8(STOP_STRING);
 	private static final IRiakObject STOP_OBJECT = ConversionUtilWrapper.convertConcreteToInterface(new RiakObject(STOP_FLAG, STOP_FLAG, STOP_FLAG, STOP_FLAG));
 	
-	private final LinkedBlockingQueue<IRiakObject> queue;
+	private final ArrayBlockingQueue<IRiakObject> queue;
 	private final NamedThreadFactory threadFactory = new NamedThreadFactory();
 	private final ExecutorService executor = Executors.newCachedThreadPool(threadFactory);
 	
@@ -30,7 +30,7 @@ public class ThreadedRiakObjectWriter implements IRiakObjectWriter {
 	private long count = 0;
 	
 	public ThreadedRiakObjectWriter(File file) {
-		this.queue = new LinkedBlockingQueue<IRiakObject>(DEFAULT_QUEUE_SIZE);
+		this.queue = new ArrayBlockingQueue<IRiakObject>(DEFAULT_QUEUE_SIZE);
 		this.threadFactory.setNextThreadName(String.format("ThreadedRiakObjectWriter-%d", threadId++));
 		executor.submit(new RiakObjectWriterThread(file, queue));
 	}
@@ -56,10 +56,10 @@ public class ThreadedRiakObjectWriter implements IRiakObjectWriter {
 	}
 	
 	private class RiakObjectWriterThread extends RiakObjectWriter implements Runnable {
-		private final LinkedBlockingQueue<IRiakObject> queue;
+		private final ArrayBlockingQueue<IRiakObject> queue;
 		
 		public RiakObjectWriterThread(File file, 
-					LinkedBlockingQueue<IRiakObject> queue) {
+					ArrayBlockingQueue<IRiakObject> queue) {
 			super(file);
 			
 			this.queue = queue;

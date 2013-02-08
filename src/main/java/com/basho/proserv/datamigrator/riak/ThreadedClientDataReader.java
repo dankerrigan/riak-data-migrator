@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ArrayBlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,10 +28,10 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 	private final ExecutorService executor = Executors.newCachedThreadPool(threadFactory);
 	
 	private final int workerCount;
-	private final LinkedBlockingQueue<Key> keyQueue = 
-			new LinkedBlockingQueue<Key>(MAX_QUEUE_SIZE);
-	private final LinkedBlockingQueue<IRiakObject> returnQueue = 
-			new LinkedBlockingQueue<IRiakObject>(MAX_QUEUE_SIZE);
+	private final ArrayBlockingQueue<Key> keyQueue = 
+			new ArrayBlockingQueue<Key>(MAX_QUEUE_SIZE);
+	private final ArrayBlockingQueue<IRiakObject> returnQueue = 
+			new ArrayBlockingQueue<IRiakObject>(MAX_QUEUE_SIZE);
 	
 	private static String ERROR_STRING = "ERRORERRORERROR";
 	private static ByteString ERROR_FLAG = ByteString.copyFromUtf8(ERROR_STRING);
@@ -142,10 +142,10 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 	private class KeyReaderThread implements Runnable {
 
 		private final Iterable<Key> keySource;
-		private final LinkedBlockingQueue<Key> keyQueue;
+		private final ArrayBlockingQueue<Key> keyQueue;
 		private final int stopCount;
 		
-		public KeyReaderThread(Iterable<Key> keys, LinkedBlockingQueue<Key> keyQueue,
+		public KeyReaderThread(Iterable<Key> keys, ArrayBlockingQueue<Key> keyQueue,
 				int stopCount) {
 			this.keySource = keys;
 			this.keyQueue = keyQueue;
@@ -183,12 +183,12 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 	private class ClientReaderThread implements Runnable {
 
 		private final IClientReader reader;
-		private final LinkedBlockingQueue<Key> keyQueue;
-		private final LinkedBlockingQueue<IRiakObject> returnQueue;
+		private final ArrayBlockingQueue<Key> keyQueue;
+		private final ArrayBlockingQueue<IRiakObject> returnQueue;
 		
 		public ClientReaderThread(IClientReader reader,
-				LinkedBlockingQueue<Key> keyQueue,
-				LinkedBlockingQueue<IRiakObject> returnQueue) {
+				ArrayBlockingQueue<Key> keyQueue,
+				ArrayBlockingQueue<IRiakObject> returnQueue) {
 			this.reader = reader;
 			this.keyQueue = keyQueue;
 			this.returnQueue = returnQueue;
@@ -221,7 +221,7 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 								 }
 								 break;
 							 } catch (IOException e) {
-								 log.error("Fetch failed, retrying");
+								 log.warn("Fetch failed, retrying");
 								 ++retries;
 								 if (retries > MAX_RETRIES) {
 									 log.error("Max retries reached");

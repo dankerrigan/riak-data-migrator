@@ -6,8 +6,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ArrayBlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,10 +27,10 @@ public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 	private final ExecutorService executor = Executors.newCachedThreadPool(threadFactory);
 	
 	private final int workerCount;
-	private final LinkedBlockingQueue<IRiakObject> objectQueue = 
-			new LinkedBlockingQueue<IRiakObject>(MAX_QUEUE_SIZE);
-	private final LinkedBlockingQueue<IRiakObject> returnQueue = 
-			new LinkedBlockingQueue<IRiakObject>(MAX_QUEUE_SIZE);
+	private final ArrayBlockingQueue<IRiakObject> objectQueue = 
+			new ArrayBlockingQueue<IRiakObject>(MAX_QUEUE_SIZE);
+	private final ArrayBlockingQueue<IRiakObject> returnQueue = 
+			new ArrayBlockingQueue<IRiakObject>(MAX_QUEUE_SIZE);
 
 	private static String ERROR_STRING= "ERRORERRORERRORERROR";
 	private static ByteString ERROR_FLAG = ByteString.copyFromUtf8(ERROR_STRING);
@@ -139,11 +138,11 @@ public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 	
 	private class RiakObjectProducerThread implements Runnable {
 		private final Iterable<IRiakObject> riakObjects;
-		private final LinkedBlockingQueue<IRiakObject> objectQueue;
+		private final ArrayBlockingQueue<IRiakObject> objectQueue;
 		private final int stopCount;
 
 		public RiakObjectProducerThread(Iterable<IRiakObject> riakObjects,
-					LinkedBlockingQueue<IRiakObject> objectQueue,
+					ArrayBlockingQueue<IRiakObject> objectQueue,
 					int stopCount) {
 			this.riakObjects = riakObjects;
 			this.objectQueue = objectQueue;
@@ -175,12 +174,12 @@ public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 	private class RiakObjectWriterThread implements Runnable {
 		
 		private final IClientWriter writer;
-		private final LinkedBlockingQueue<IRiakObject> objectQueue;
-		private final LinkedBlockingQueue<IRiakObject> returnQueue;
+		private final ArrayBlockingQueue<IRiakObject> objectQueue;
+		private final ArrayBlockingQueue<IRiakObject> returnQueue;
 		
 		public RiakObjectWriterThread(IClientWriter writer,
-					LinkedBlockingQueue<IRiakObject> objectQueue,
-					LinkedBlockingQueue<IRiakObject> returnQueue) {
+					ArrayBlockingQueue<IRiakObject> objectQueue,
+					ArrayBlockingQueue<IRiakObject> returnQueue) {
 			this.writer = writer;
 			this.objectQueue = objectQueue;
 			this.returnQueue = returnQueue;
@@ -207,7 +206,7 @@ public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 								this.writer.storeRiakObject(object);
 								break;
 							} catch (IOException e) {
-								log.error("Store failed, retrying");
+								log.warn("Store failed, retrying");
 								++retries;
 								if (retries > MAX_RETRIES) {
 									log.error("Max retries reached");
