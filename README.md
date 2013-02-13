@@ -22,18 +22,20 @@ Building from source:
 1. Make sure [Apache Maven](http://maven.apache.org/) is installed
 2. Riak Data Migrator depends on the [Riak Java Client](https://github.com/basho/riak-java-client),
     and it needs to be built first
-    ```bash
-    git clone https://github.com/basho/riak-java-client.git
-    cd riak-java-client.git
-    mvn install
-    cd ..
-    ```
+```bash
+git clone https://github.com/basho/riak-java-client.git
+cd riak-java-client.git
+mvn install
+cd ..
+```
+
 3. Build the Riak Data Migrator itself, using Maven. First, fork this project, and ```git clone``` your fork.
-    ```bash
-    cd riak-data-migrator.git
-    mvn clean
-    mvn package
-    ```
+```bash
+cd riak-data-migrator.git
+mvn clean
+mvn package
+```
+
     The compiled .jar file is located in the ```target/``` directory.
     The usable binary file is ```riak-data-migrator-0.1.3-bin.tar.gz```  (the other .tar.gz is the source archive).
 
