@@ -19,8 +19,8 @@ java -jar riak-data-migrator-0.1.3.jar [options]
 
 Building from source:
 ------------------------
-1. Make sure [[http://maven.apache.org/][Apache Maven]] is installed
-2. Riak Data Migrator depends on the [[https://github.com/basho/riak-java-client][Riak Java Client]],
+1. Make sure [Apache Maven](http://maven.apache.org/) is installed
+2. Riak Data Migrator depends on the [Riak Java Client](https://github.com/basho/riak-java-client),
     and it needs to be built first
     ```bash
     git clone https://github.com/basho/riak-java-client.git
