@@ -52,6 +52,27 @@ public class BucketLoader {
 		this.resetVClock = resetVClock;
 	}
 	
+	public long loadBucketSettings(Set<String> bucketNames) {
+		if (bucketNames == null) {
+			throw new IllegalArgumentException("bucketNames cannot be null or empty");
+		}
+		
+		long count = 0;
+		for (String bucketName : bucketNames) {
+			if (this.verboseStatusOutput) {
+				System.out.println("Loading bucket properties for " + bucketName);
+			}
+			File path = new File(this.createBucketPath(bucketName));
+			if (!path.exists()) {
+				path.mkdir();
+			}
+			this.restoreBucketSettings(bucketName, path);
+			++count;
+		}
+		
+		return count;
+	}
+	
 	public long LoadAllBuckets() {
 		long objectCount = 0;
 		

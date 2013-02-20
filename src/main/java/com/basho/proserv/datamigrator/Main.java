@@ -22,6 +22,8 @@ public class Main {
 			System.exit(1);
 		}
 		
+		
+		// Handle exclusive options
 		int cmdCount = 0;
 		
 		if (cmd.hasOption("l")) {
@@ -44,13 +46,24 @@ public class Main {
 			System.exit(1);
 		}
 		
+		if (cmd.hasOption('k') && cmd.hasOption('t')) {
+			System.out.println("Keys (k) and Bucket Properties (t) are exclusive options.");
+			System.exit(1);
+		}
+		
+		
+		if (cmd.hasOption('a') && cmd.hasOption('t')) {
+			System.out.println("All Buckets (a) not compatible with Bucket Properties (t).");
+			System.exit(1);
+		}
+		
 		Configuration config = handleCommandLine(cmd);
 		
-		if (cmd.hasOption("l")) {
+		if (cmd.hasOption("l") || (cmd.hasOption("l") && cmd.hasOption("t"))) {
 			runLoader(config);
 		}
 
-		if (cmd.hasOption("d") || cmd.hasOption("k")) {
+		if (cmd.hasOption("d") || cmd.hasOption("k") || (cmd.hasOption("d") && cmd.hasOption("t"))) {
 			runDumper(config);
 		}
 		
@@ -59,6 +72,7 @@ public class Main {
 	public static Configuration handleCommandLine(CommandLine cmd) {
 		Configuration config = new Configuration();
 		
+		// Data path
 		if (cmd.hasOption("r")) {
 			File dataPath = new File(cmd.getOptionValue("r"));
 			if (!dataPath.exists()) {
@@ -71,14 +85,17 @@ public class Main {
 			System.exit(1);
 		}
 		
-		if (cmd.hasOption("R")) {
-			config.setResume(true);
-		}
+		// Not available
+//		if (cmd.hasOption("R")) {
+//			config.setResume(true);
+//		}
 		
+		// Host
 		if (cmd.hasOption("h")) {
 			config.addHost(cmd.getOptionValue("h"));
 		}
 		
+		// Cluster hosts filename
 		if (cmd.hasOption("c")) {
 			try {
 				config.addHosts(Utilities.readFileLines(cmd.getOptionValue("c")));
@@ -92,6 +109,7 @@ public class Main {
 			System.exit(1);
 		}
 		
+		// PB port
 		if (cmd.hasOption("p")) {
 			try {
 				config.setPort(Integer.parseInt(cmd.getOptionValue("p")));
@@ -103,6 +121,7 @@ public class Main {
 			System.out.println("Port not specified, using the default: 8087");
 		}
 		
+		// HTTP Port
 		if (cmd.hasOption("H")) {
 			try {
 				config.setHttpPort(Integer.parseInt(cmd.getOptionValue("H")));
@@ -114,10 +133,12 @@ public class Main {
 			System.out.println("HTTP port not specified, using the default: 8098");
 		}
 		
+		// Single bucket specifier
 		if (cmd.hasOption("b")) {
 			config.addBucketName(cmd.getOptionValue("b"));
 			config.setOperation(Configuration.Operation.BUCKETS);
 		}
+		// Bucket filename
 		if (cmd.hasOption("f")) {
 			try {
 				config.addBucketNames(Utilities.readFileLines(cmd.getOptionValue("f")));
@@ -127,8 +148,14 @@ public class Main {
 				System.exit(1);
 			}
 		}
+		// Keys only
 		if (cmd.hasOption("k")) { // if keys only....
 			config.setOperation(Configuration.Operation.BUCKET_KEYS);
+		}
+
+		// Bucket properties transfer
+		if (cmd.hasOption("t")) { // if transfer buckets, no compatible with k
+			config.setOperation(Configuration.Operation.BUCKET_PROPERTIES);
 		}
 		
 		if (config.getBucketNames().size() == 0 && !cmd.hasOption("a")) {
@@ -145,13 +172,15 @@ public class Main {
 			config.setOperation(Configuration.Operation.ALL_KEYS);
 		}
 		
+		//Verbose output
 		if (cmd.hasOption("v")) {
 			config.setVerboseStatus(true);
 		}
 		
-		if (cmd.hasOption("resetvclock")) {
-			config.setResetVClock(true);
-		}
+		// not necessary...
+//		if (cmd.hasOption("resetvclock")) {
+//			config.setResetVClock(true);
+//		}
 		if (cmd.hasOption("riakworkercount")) {
 			try {
 				config.setRiakWorkerCount(Integer.parseInt(cmd.getOptionValue("riakworkercount")));
@@ -201,6 +230,8 @@ public class Main {
 		long loadCount = 0;
 		if (config.getOperation() == Configuration.Operation.BUCKETS) {
 			loadCount = loader.LoadBuckets(config.getBucketNames());
+		} else if (config.getOperation() == Configuration.Operation.BUCKET_PROPERTIES) {
+			loadCount = loader.loadBucketSettings(config.getBucketNames());
 		} else {
 			loadCount = loader.LoadAllBuckets();
 		}
@@ -247,6 +278,8 @@ public class Main {
 		if (config.getOperation() == Configuration.Operation.BUCKETS || 
 				config.getOperation() == Configuration.Operation.BUCKET_KEYS) {
 			dumpCount = dumper.dumpBuckets(config.getBucketNames(), config.getResume(), keysOnly);
+		} else if (config.getOperation() == Configuration.Operation.BUCKET_PROPERTIES) {
+			dumpCount = dumper.dumpBucketSettings(config.getBucketNames());
 		} else {
 			dumpCount = dumper.dumpAllBuckets(config.getResume(), keysOnly);
 		}
@@ -288,6 +321,7 @@ public class Main {
 		options.addOption("H", true, "Specify Riak HTTP Port");
 		options.addOption("v", false, "Output verbose status output to the command line");
 		options.addOption("k", false, "Dump keys to file.  Cannot be used with l, d");
+		options.addOption("t", false, "Download bucket properties");
 //		options.addOption("j", true, "Resume based on previuosly written keys");
 		options.addOption("resetvclock", false, "Resets object's VClock prior to being loaded in Riak");
 		options.addOption("riakworkercount", true, "Specify Riak Worker Count");

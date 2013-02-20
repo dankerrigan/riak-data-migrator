@@ -46,6 +46,25 @@ public class BucketDumper {
 		this.riakWorkerCount = riakWorkerCount;
 	}
 	
+	public long dumpBucketSettings(Set<String> bucketNames) {
+		if (bucketNames == null) {
+			throw new IllegalArgumentException("bucketNames cannot be null or empty");
+		}
+		long count = 0;
+		for (String bucketName : bucketNames) {
+			if (this.verboseStatusOutput) {
+				System.out.println("Saving bucket properties for " + bucketName);
+			}
+			File path = new File(this.createBucketPath(bucketName));
+			if (!path.exists()) {
+				path.mkdir();
+			}
+			this.saveBucketSettings(bucketName, path);
+			++ count;
+		}
+		return count;
+	}
+	
 	public long dumpAllBuckets(boolean resume, boolean keysOnly) {
 		Set<String> buckets = null;
 		if (this.connection.connected()) {
@@ -206,8 +225,12 @@ public class BucketDumper {
 		}
 	}
 	
+	private String createBucketPath(String bucketName) {
+		return this.dataRoot.getAbsolutePath() + "/" + bucketName;
+	}
+	
 	private RiakObjectBucket createBucket(String bucketName) {
-		String bucketRootPath = this.dataRoot.getAbsolutePath() + "/" + bucketName;
+		String bucketRootPath = this.createBucketPath(bucketName);
 		File bucketRoot = new File(bucketRootPath);
 		return new RiakObjectBucket(bucketRoot, RiakObjectBucket.BucketMode.WRITE, false);
 	}
