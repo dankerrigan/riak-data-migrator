@@ -83,13 +83,14 @@ Data Transfer (required, one of: d, l or k)
 
 Settings Transfer (optional, used with to -d or -l)
 -t Transfer custom bucket properties only (no data), to and from files on disk. 
-   You must also specify -d or -l, with this option. (Not to be used with -k)
+   You must specify one or more buckets (not to be used with -a, the All Buckets option).
+   You must also specify -d to export or -l to import, with this option.
 
 Path (required)
 -r <path> Set the path for data to be loaded to or dumped from (path must be valid)
 
 Bucket Options (required for -d, -k or -t)
--a Export all buckets.  
+-a Export all buckets.
 -b <bucket name> Export a single bucket.  
 -f <bucketNameFile.txt> Export multiple buckets listed in a file (containing line-delimited bucket names)
 
