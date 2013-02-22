@@ -29,6 +29,7 @@ after the export operation is started, that new data is not guaranteed to be inc
 Workflow
 ------------------------
 To transfer data from one Riak cluster to another:
+
 1. *Before using the migrator tool*, make sure that the ```app.config``` files are the same in both clusters. 
     Meaning, settings such as default quorum values, multi-backend and MDC replication settings, should be the same
     before starting export/import operations.
