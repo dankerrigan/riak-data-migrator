@@ -76,12 +76,12 @@ Usage:
 
 Options:
 ```
-Data Export Operations (required, one of: d, l or k)
+Data Transfer (required, one of: d, l or k)
 -d Export (Dump) the contents bucket(s) (keys and objects), in ProtoBuf format, to files
 -l Import (Load) the contents of bucket(s) exported by the data migrator, from files.
 -k Export a list of Keys only (not object values) from bucket(s), to a text file. (Not to be used with -t)
 
-Utility Operations (used in addition to -d or -l)
+Settings Transfer (optional, used with to -d or -l)
 -t Transfer custom bucket properties only (no data), to and from files on disk. 
    You must also specify -d or -l, with this option. (Not to be used with -k)
 
