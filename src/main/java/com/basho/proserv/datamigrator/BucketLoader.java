@@ -62,7 +62,7 @@ public class BucketLoader {
 			if (this.verboseStatusOutput) {
 				System.out.println("Loading bucket properties for " + bucketName);
 			}
-			File path = new File(this.createBucketPath(bucketName));
+			File path = new File(this.createBucketPath(bucketName, true));
 			if (!path.exists()) {
 				path.mkdir();
 			}
@@ -113,7 +113,7 @@ public class BucketLoader {
 						this.riakWorkerCount);
 
 		KeyJournal keyJournal = new KeyJournal(
-				KeyJournal.createKeyPathFromPath(new File(this.createBucketPath(bucketName) + "/keys" ), true), 
+				KeyJournal.createKeyPathFromPath(new File(this.createBucketPath(bucketName, true) + "/keys" ), true), 
 					KeyJournal.Mode.WRITE);
 		
 		try {
@@ -150,7 +150,10 @@ public class BucketLoader {
 		this.connection.close();
 	}
 
-	public String createBucketPath(String bucketName) {
+	public String createBucketPath(String bucketName, boolean urlEncode) {
+		if (urlEncode) {
+			bucketName = Utilities.urlEncode(bucketName);
+		}
 		String fullPathname = this.dataRoot.getAbsolutePath() + "/" + bucketName;
 		return fullPathname;
 	}
@@ -199,7 +202,7 @@ public class BucketLoader {
 	}
 	
 	private RiakObjectBucket createBucket(String bucketName) {
-		String fullPathname = this.createBucketPath(bucketName);
+		String fullPathname = this.createBucketPath(bucketName, true);
 		File fullPath = new File(fullPathname);
 		
 		return new RiakObjectBucket(fullPath, RiakObjectBucket.BucketMode.READ, this.resetVClock);
@@ -209,10 +212,11 @@ public class BucketLoader {
 		Set<String> buckets = new HashSet<String>();
 		
 		for (String bucketName : this.dataRoot.list()) {
-			String fullPathname = this.createBucketPath(bucketName);
+			String fullPathname = this.createBucketPath(bucketName, false);
 			File fullPath = new File(fullPathname);
 			if (fullPath.isDirectory()) {
-				buckets.add(bucketName);
+				String decodedBucketName = Utilities.urlDecode(bucketName); 
+				buckets.add(decodedBucketName);
 			}
 		}
 		

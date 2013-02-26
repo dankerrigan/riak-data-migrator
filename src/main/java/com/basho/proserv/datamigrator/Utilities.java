@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -32,5 +33,21 @@ public class Utilities {
 		}
 		
 		return set;
+	}
+	
+	public static String urlEncode(String input) {
+		try {
+			return java.net.URLEncoder.encode(input, "UTF-8");
+		} catch (UnsupportedEncodingException e) {
+			return input;
+		}
+	}
+	
+	public static String urlDecode(String input) {
+		try {
+			return java.net.URLDecoder.decode(input, "UTF-8");
+		} catch (UnsupportedEncodingException e) {
+			return input;
+		}
 	}
 }

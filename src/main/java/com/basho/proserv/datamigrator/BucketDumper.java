@@ -226,7 +226,8 @@ public class BucketDumper {
 	}
 	
 	private String createBucketPath(String bucketName) {
-		return this.dataRoot.getAbsolutePath() + "/" + bucketName;
+		String encodedBucketName = Utilities.urlEncode(bucketName);
+		return this.dataRoot.getAbsolutePath() + "/" + encodedBucketName;
 	}
 	
 	private RiakObjectBucket createBucket(String bucketName) {
