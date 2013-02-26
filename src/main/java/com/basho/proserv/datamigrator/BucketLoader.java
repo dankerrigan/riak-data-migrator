@@ -2,6 +2,8 @@ package com.basho.proserv.datamigrator;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -151,7 +153,12 @@ public class BucketLoader {
 	}
 
 	public String createBucketPath(String bucketName) {
-		String fullPathname = this.dataRoot.getAbsolutePath() + "/" + bucketName;
+		String fullPathname;
+		try {
+			fullPathname = this.dataRoot.getAbsolutePath() + "/" + URLEncoder.encode(bucketName,"UTF-8");
+		} catch (UnsupportedEncodingException e) {
+			throw new RuntimeException("Unsupported Encoding Exception - UTF-8");
+		}
 		return fullPathname;
 	}
 	

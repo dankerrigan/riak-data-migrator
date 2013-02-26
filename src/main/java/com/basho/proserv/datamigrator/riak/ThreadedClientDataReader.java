@@ -3,15 +3,14 @@ package com.basho.proserv.datamigrator.riak;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ArrayBlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.basho.proserv.datamigrator.BucketLoader;
 import com.basho.proserv.datamigrator.io.Key;
 import com.basho.proserv.datamigrator.util.NamedThreadFactory;
 import com.basho.riak.client.IRiakObject;
@@ -152,7 +151,7 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 			this.stopCount = stopCount;
 		}
 		
-		@Override
+		
 		public void run() {
 			try {
 				for (Key key : keySource) {
@@ -194,7 +193,7 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 			this.returnQueue = returnQueue;
 		}
 		
-		@Override
+		
 		public void run() {
 			try {
 				try {

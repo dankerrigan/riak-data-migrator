@@ -37,21 +37,21 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 	private Queue<File> fileQueue = new LinkedBlockingQueue<File>();
 	
 	public static FilenameFilter dataFileFilter = new FilenameFilter() {
-		@Override
+
 		public boolean accept(File dir, String name) {
 			return name.toLowerCase().endsWith(".data");
 		}
 	};
 	
 	public static FilenameFilter keyFileFilter = new FilenameFilter() {
-		@Override
+		
 		public boolean accept(File dir, String name) {
 			return name.toLowerCase().endsWith(".keys");
 		}
 	};
 	
 	public static FilenameFilter loadedKeyFileFilter = new FilenameFilter() {
-		@Override
+		
 		public boolean accept(File dir, String name) {
 			return name.toLowerCase().endsWith(".loadedkeys");
 		}
@@ -177,7 +177,7 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 		this.closeChunk();
 	}
 
-	@Override
+	
 	public Iterator<IRiakObject> iterator() {
 		return new RiakObjectIterator(this);
 	}
@@ -197,19 +197,19 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 		}
 		
 		
-		@Override
+		
 		public boolean hasNext() {
 			return nextObject != null;
 		}
 
-		@Override
+		
 		public IRiakObject next() {
 			IRiakObject object = this.nextObject;
 			this.nextObject = this.riakObjectBucket.readRiakObject();
 			return object;
 		}
 
-		@Override
+		
 		public void remove() {
 			throw new UnsupportedOperationException();
 		}
@@ -222,7 +222,7 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 		public RiakBucketKeys(RiakObjectBucket bucket) {
 			this.bucket = bucket;
 		}
-		@Override
+		
 		public Iterator<Key> iterator() {
 			return new RiakBucketKeyIterator(bucket.iterator());
 		}
@@ -236,18 +236,18 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 			this.objectIterator = objectIterator;
 		}
 
-		@Override
+		
 		public boolean hasNext() {
 			return objectIterator.hasNext();
 		}
 
-		@Override
+		
 		public Key next() {
 			IRiakObject object = objectIterator.next();
 			return new Key(object.getBucket(), object.getKey());
 		}
 
-		@Override
+		
 		public void remove() {
 			throw new UnsupportedOperationException();
 		}

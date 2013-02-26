@@ -1,7 +1,7 @@
 package com.basho.proserv.datamigrator.riak;
 
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,7 +10,6 @@ import org.junit.Test;
 
 import com.basho.proserv.datamigrator.io.Key;
 import com.basho.riak.client.IRiakObject;
-import com.basho.riak.pbc.RiakObject;
 
 
 public class ThreadedClientDataReaderTests {

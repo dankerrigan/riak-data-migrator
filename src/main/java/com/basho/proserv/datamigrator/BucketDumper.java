@@ -2,6 +2,8 @@ package com.basho.proserv.datamigrator;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -226,7 +228,11 @@ public class BucketDumper {
 	}
 	
 	private String createBucketPath(String bucketName) {
-		return this.dataRoot.getAbsolutePath() + "/" + bucketName;
+		try {
+			return this.dataRoot.getAbsolutePath() + "/" + URLEncoder.encode(bucketName,"UTF-8");
+		} catch (UnsupportedEncodingException e) {
+			throw new RuntimeException("UnsupportedEncodingExcpetion - UTF-8");
+		}
 	}
 	
 	private RiakObjectBucket createBucket(String bucketName) {

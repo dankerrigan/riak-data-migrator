@@ -7,7 +7,6 @@ import com.google.protobuf.ByteString;
 
 public class DummyClientReader implements IClientReader {
 
-	@Override
 	public RiakObject[] fetchRiakObject(String bucket, String key)
 			throws IOException {
 		ByteString vclock = ByteString.copyFromUtf8("ReplaceWithGeneratedVClock");

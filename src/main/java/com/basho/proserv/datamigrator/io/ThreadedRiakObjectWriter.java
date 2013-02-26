@@ -1,9 +1,9 @@
 package com.basho.proserv.datamigrator.io;
 
 import java.io.File;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ArrayBlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +27,6 @@ public class ThreadedRiakObjectWriter implements IRiakObjectWriter {
 	private final ExecutorService executor = Executors.newCachedThreadPool(threadFactory);
 	
 	private static int threadId = 0;
-	private long count = 0;
 	
 	public ThreadedRiakObjectWriter(File file) {
 		this.queue = new ArrayBlockingQueue<IRiakObject>(DEFAULT_QUEUE_SIZE);
@@ -35,7 +34,7 @@ public class ThreadedRiakObjectWriter implements IRiakObjectWriter {
 		executor.submit(new RiakObjectWriterThread(file, queue));
 	}
 	
-	@Override
+	
 	public boolean writeRiakObject(IRiakObject riakObject) {
 		try {
 			this.queue.put(riakObject);
@@ -45,7 +44,7 @@ public class ThreadedRiakObjectWriter implements IRiakObjectWriter {
 		return true;
 	}
 
-	@Override
+	
 	public void close() {
 		try {
 			this.queue.put(STOP_OBJECT);
@@ -66,7 +65,7 @@ public class ThreadedRiakObjectWriter implements IRiakObjectWriter {
 			
 		}
 
-		@Override
+		
 		public void run() {
 			try {
 				while (!Thread.currentThread().isInterrupted()) {
@@ -78,8 +77,7 @@ public class ThreadedRiakObjectWriter implements IRiakObjectWriter {
 					if (riakObject.getBucket().compareTo(STOP_STRING) == 0) {
 						break;
 					}
-					boolean success = super.writeRiakObject(riakObject);
-					++count;
+					super.writeRiakObject(riakObject);
 				}
 			} catch (InterruptedException e) {
 				// no-op, allow to exit

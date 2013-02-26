@@ -1,6 +1,6 @@
 package com.basho.proserv.datamigrator;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 

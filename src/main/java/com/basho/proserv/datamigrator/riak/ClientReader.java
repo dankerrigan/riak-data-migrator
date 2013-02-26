@@ -1,12 +1,12 @@
 package com.basho.proserv.datamigrator.riak;
 
+import static com.basho.riak.client.raw.pbc.ConversionUtilWrapper.convertInterfaceToConcrete;
+
 import java.io.IOException;
 
 import com.basho.riak.client.IRiakObject;
 import com.basho.riak.client.raw.RiakResponse;
 import com.basho.riak.pbc.RiakObject;
-
-import static com.basho.riak.client.raw.pbc.ConversionUtilWrapper.convertInterfaceToConcrete;
 
 public class ClientReader implements IClientReader {
 	
@@ -16,7 +16,6 @@ public class ClientReader implements IClientReader {
 		this.connection = connection;
 	}
 
-	@Override
 	public RiakObject[] fetchRiakObject(String bucket, String key) 
 			throws IOException {
 		
