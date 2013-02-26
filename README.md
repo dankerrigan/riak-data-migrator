@@ -119,7 +119,7 @@ Load all buckets previously dumped back into Riak:
 
 Dump (the contents of) buckets listed in a line delimited file from a Riak cluster:  
 <pre>
-java -jar riak-data-migrator-0.1.3.jar -d -f /home/riakadmin/buckets_to_export.txt -r \  
+java -jar riak-data-migrator-0.1.4.jar -d -f /home/riakadmin/buckets_to_export.txt -r \  
 /var/riak-export -c /home/riakadmin/riak_hosts.txt -p 8087 -H 8098
 </pre>
 
