@@ -23,6 +23,7 @@ import com.basho.riak.client.bucket.BucketProperties;
 // BucketLoader will only work with clients returning protobuffer objects, ie PBClient
 public class BucketLoader {
 	private final Logger log = LoggerFactory.getLogger(BucketLoader.class);
+	public final Summary summary = new Summary();
 	private final Connection connection;
 	private final Connection httpConnection;
 	private final File dataRoot;
@@ -92,6 +93,7 @@ public class BucketLoader {
 	}
 	
 	public long LoadBucket(String bucketName) {
+		long start = System.currentTimeMillis();
 		if (bucketName == null || bucketName.isEmpty()) {
 			throw new IllegalArgumentException("bucketName cannot be null or empty");
 		}
@@ -104,6 +106,13 @@ public class BucketLoader {
 		this.previousCount = 0;
 		
 		RiakObjectBucket dumpBucket = this.createBucket(bucketName);
+		if (!dumpBucket.dataFilesExist()) {
+			this.summary.addStatistic(bucketName, -1l, 0l);
+			if (this.verboseStatusOutput) {
+				System.out.println(String.format("No data files found for bucket %s", bucketName));
+			}
+			return 0;
+		}
 //		this.restoreBucketSettings(bucketName, dumpBucket.getFileRoot());
 		File keyPath = new File(dumpBucket.getFileRoot().getAbsoluteFile() + "/bucketkeys.keys");
 		long keyCount = this.scanKeysForBucketSize(keyPath);
@@ -135,10 +144,12 @@ public class BucketLoader {
 			dumpBucket.close();
 		}
 	
+		long stop = System.currentTimeMillis();
+		summary.addStatistic(bucketName, objectCount, stop - start);
+		
 		if (this.verboseStatusOutput) {
 			this.printStatus(keyCount, objectCount, true);
 		}
-		
 		return objectCount;
 	}
 	

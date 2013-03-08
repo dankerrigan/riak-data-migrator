@@ -75,10 +75,19 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 		
 		if (bucketMode == BucketMode.READ) {
 			this.populateChunks();
-			if (!this.readNewChunkFile()) {
-				throw new IllegalArgumentException("Could not open files for reading");
+			if (this.dataFilesExist()) {
+				if (!this.readNewChunkFile()) {
+					throw new IllegalArgumentException("Could not open files for reading");
+				}
+			} else { 
+				log.error("No bucket data files could be found");
 			}
 		}
+	}
+	
+	public boolean dataFilesExist() {
+		String[] fileList = this.fileRoot.list(dataFileFilter);
+		return fileList.length > 0;
 	}
 	
 	public void setFilePrefix(String filePrefix) {
@@ -149,8 +158,11 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 	private boolean readNewChunkFile() {
 		File chunkFile = this.fileQueue.poll();
 		if (chunkFile == null) {
-			this.currentRiakObjectReader.close();
-			this.currentRiakObjectReader = null;
+			// currentRiakObjectReader will be null if no files in dump/bucket dir
+			if (this.currentRiakObjectReader != null) {
+				this.currentRiakObjectReader.close();
+				this.currentRiakObjectReader = null;
+			}
 			return false;
 		} else {
 			this.closeChunk();
@@ -196,7 +208,6 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 			this.nextObject = this.riakObjectBucket.readRiakObject();
 		}
 		
-		
 		@Override
 		public boolean hasNext() {
 			return nextObject != null;
@@ -213,7 +224,6 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 		public void remove() {
 			throw new UnsupportedOperationException();
 		}
-	
 	}
 	
 	private class RiakBucketKeys implements Iterable<Key> {

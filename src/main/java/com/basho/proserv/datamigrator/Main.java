@@ -1,6 +1,7 @@
 package com.basho.proserv.datamigrator;
 
 import java.io.File;
+import java.util.Map;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -242,7 +243,8 @@ public class Main {
 		
 		double totalTime = ((stop-start)/1000.0);
 		Double recsPerSec = loadCount / totalTime;
-		System.out.println("\nLoaded " + loadCount + " in " + totalTime + " seconds. " + recsPerSec + " objects/sec");
+//		System.out.println("\nLoaded " + loadCount + " in " + totalTime + " seconds. " + recsPerSec + " objects/sec");
+		printSummary(loader.summary, "Load Summary:");
 	}
 	
 	public static void runDumper(Configuration config) {
@@ -273,7 +275,7 @@ public class Main {
 		
 		boolean keysOnly = (config.getOperation() == Configuration.Operation.ALL_KEYS ||
 				config.getOperation() == Configuration.Operation.BUCKET_KEYS);
-		long start = System.currentTimeMillis();
+//		long start = System.currentTimeMillis();
 		long dumpCount = 0;
 		if (config.getOperation() == Configuration.Operation.BUCKETS || 
 				config.getOperation() == Configuration.Operation.BUCKET_KEYS) {
@@ -283,20 +285,60 @@ public class Main {
 		} else {
 			dumpCount = dumper.dumpAllBuckets(config.getResume(), keysOnly);
 		}
-		long stop = System.currentTimeMillis();
+//		long stop = System.currentTimeMillis();
 		
 		connection.close();
 		httpConnection.close();
 		
-		double totalTime = ((stop-start)/1000.0);
-		double recsPerSec = dumpCount / totalTime;
-		System.out.println("\nDumped " + dumpCount + " in " + totalTime + " seconds. " + recsPerSec + " objects/sec");
+//		double totalTime = ((stop-start)/1000.0);
+//		double recsPerSec = dumpCount / totalTime;
+//		System.out.println("\nDumped " + dumpCount + " in " + totalTime + " seconds. " + recsPerSec + " objects/sec");
+		printSummary(dumper.summary, "Dump Summary:");
 	}
 	
 	public static void printHelp(String arg) {
 		Options options = createOptions();
 		HelpFormatter formatter = new HelpFormatter();
 		formatter.printHelp(arg, options);
+	}
+	
+	private static void printSummary(Summary summary, String title) {
+		Map<String, Long[]> bucketStats = summary.getStatistics();
+		System.out.println();
+		System.out.println(title);
+		System.out.println(String.format("%15s%12s%12s%12s","Bucket","Objects","Seconds","Objs/Sec"));
+		long totalRecords = 0;
+		long totalTime = 0;
+		for (String bucketName : summary.bucketNames()) {
+			Long[] count_time = bucketStats.get(bucketName);
+			String line = null;
+			if (count_time[0] < 0) {
+				String errorString = "ERROR";
+				if (count_time[0] == -2) {
+					errorString = "KEY LIST ERROR";
+				}
+				line = String.format("%15s%12s%12s%12s", 
+						bucketName, 
+						errorString,
+						errorString,
+						errorString);
+			} else {
+				totalRecords += count_time[0];
+				totalTime += count_time[1];
+				line = String.format("%15s%12d%12.1f%12.1f",
+						bucketName,
+						count_time[0],
+						count_time[1]/1000.0,
+						count_time[0]/(count_time[1]/1000.0));
+			}
+			System.out.println(line);
+		}
+		String line = String.format("%15s%12d%12.1f%12.1f",
+				"Total:",
+				totalRecords,
+				totalTime/1000.0,
+				totalRecords/(totalTime/1000.0));
+		System.out.println(line);
 	}
 	
 	private static CommandLine parseCommandLine(Options options, String[] args) throws ParseException {
