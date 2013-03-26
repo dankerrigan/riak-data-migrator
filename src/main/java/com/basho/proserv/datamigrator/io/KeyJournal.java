@@ -66,8 +66,11 @@ public class KeyJournal implements Iterable<Key> {
 		if (line == null) {
 			return null;
 		}
-		String[] values = line.trim().split(",");
-		if (values.length == 2) {
+		String[] values = new String[2];
+		int comma = line.indexOf(',');
+		if (comma != -1) {
+			values[0] = line.substring(0, comma);
+			values[1] = line.substring(comma + 1, line.length());
 			return new Key(values[0], values[1]);
 		}
 		return null;

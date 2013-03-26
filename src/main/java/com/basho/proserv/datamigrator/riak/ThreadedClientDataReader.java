@@ -89,7 +89,7 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 						}
 					} else if (isError(riakObject)) {
 						this.interruptWorkers();
-						throw new IOException();
+						throw new IOException("Error reading Riak Object, shutting down bucket load process");
 					} else { 
 						break;
 					}
@@ -221,10 +221,11 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 								 }
 								 break;
 							 } catch (IOException e) {
-								 log.warn("Fetch failed, retrying");
 								 ++retries;
+								 log.error(String.format("Fetch fail %d on key %s, retrying", retries, key.key()), e);
+								 Thread.sleep(RETRY_WAIT_TIME);
 								 if (retries > MAX_RETRIES) {
-									 log.error("Max retries reached");
+									 log.error(String.format("Max retries %d reached", MAX_RETRIES), e);
 									 throw e;
 								 }
 							 }

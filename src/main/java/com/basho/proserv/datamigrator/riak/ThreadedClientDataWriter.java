@@ -79,7 +79,7 @@ public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 	//				}
 					if (isError(riakObject)) {
 						this.interruptWorkers();
-						throw new IOException();
+						throw new IOException("Error writing Riak Object, shutting down bucket load process");
 					} else if (isStop(riakObject)) {
 						++this.stoppedCount;
 						if (this.stoppedCount == this.workerCount) {
@@ -206,10 +206,11 @@ public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 								this.writer.storeRiakObject(object);
 								break;
 							} catch (IOException e) {
-								log.warn("Store failed, retrying");
 								++retries;
+								log.error(String.format("Store fail %d on key %s, retrying", retries, object.getKey()), e);
+								Thread.sleep(RETRY_WAIT_TIME);
 								if (retries > MAX_RETRIES) {
-									log.error("Max retries reached");
+									log.error(String.format("Max retries %d reached", MAX_RETRIES), e);
 									throw e;
 								}
 							} catch (Throwable t) {

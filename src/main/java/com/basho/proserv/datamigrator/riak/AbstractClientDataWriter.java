@@ -6,6 +6,7 @@ import com.basho.riak.client.IRiakObject;
 
 public abstract class AbstractClientDataWriter {
 	protected final static int MAX_RETRIES = 3;
+	protected final static int RETRY_WAIT_TIME = 10; 
 	protected final Connection connection;
 	protected final IClientWriterFactory clientWriterFactory;
 	protected final Iterable<IRiakObject> objectSource;

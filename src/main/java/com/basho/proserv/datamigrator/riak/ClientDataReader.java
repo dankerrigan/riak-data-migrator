@@ -36,9 +36,9 @@ public class ClientDataReader extends AbstractClientDataReader {
 	public IRiakObject readObject() throws IOException {
 		if (queuedObjects.isEmpty()) {
 			int retries = 0;
+			Key key = this.keyIterator.next();
 			while (retries < MAX_RETRIES) {
 				try {
-					Key key = this.keyIterator.next();
 					RiakObject[] objects = this.reader.fetchRiakObject(key.bucket(), key.key());
 					
 					for (RiakObject obj : objects) {
@@ -51,7 +51,7 @@ public class ClientDataReader extends AbstractClientDataReader {
 				} catch (IOException e) {
 					++retries;
 					if (retries > MAX_RETRIES) {
-						log.error("Max retries reached");
+						log.error("Max retries reached", e);
 						throw e;
 					}
 				}

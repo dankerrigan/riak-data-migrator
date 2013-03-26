@@ -135,6 +135,8 @@ public class BucketDumper {
 		}
 		
 		if (keysOnly) {
+			String bucketNameKeys= String.format("%s keys", bucketName);
+			this.summary.addStatistic(bucketNameKeys, keyCount, System.currentTimeMillis()-start);
 			return keyCount;
 		}
 		
@@ -165,7 +167,7 @@ public class BucketDumper {
 				}	
 			}
 		} catch (IOException e) {
-			log.error("Riak error dumping objects for bucket: " + bucketName);
+			log.error("Riak error dumping objects for bucket: " + bucketName, e);
 			this.summary.addStatistic(bucketName, -1l, 0l);
 			e.printStackTrace();
 			++errorCount;

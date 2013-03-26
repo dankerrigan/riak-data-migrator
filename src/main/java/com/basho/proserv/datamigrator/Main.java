@@ -170,7 +170,11 @@ public class Main {
 			}
 		}
 		if (cmd.hasOption("k")) { // if keys only....
-			config.setOperation(Configuration.Operation.ALL_KEYS);
+			if (config.getBucketNames().size() > 0) {
+				config.setOperation(Configuration.Operation.BUCKET_KEYS);
+			} else {
+				config.setOperation(Configuration.Operation.ALL_KEYS);
+			}
 		}
 		
 		//Verbose output
