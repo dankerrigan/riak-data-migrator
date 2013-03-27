@@ -9,13 +9,14 @@ java -jar riak-data-migrator-0.1.9.jar [options]
 
 Options:
 -l Set to Load buckets. Cannot be used with d or k.
--d Set to Dump buckets. Cannot be used with l or k.
+-d Set to Dump buckets. Cannot be used with l or k.  Must specify one or more buckets
 -k Set to Dump bucket keys. Cannot be used with d or l. Cannot be used with t.  
 -t Transfer bucket properties. Will dump or load bucket properties instead of data.
-    Cannot be used with k.  
+    Cannot be used with k.
+--delete Delete bucket data.  cannot be used with d, l, k, or t  
 -r <path> Set the path for data to be loaded to or dumped from. 
 	The path must exist and is required.
--a Load or Dump all buckets.
+-a Load or Dump all buckets. Cannot be used with delete
 -b <bucket name> Load or Dump a single bucket.
 -f <bucketNameFile.txt> Load or Dump a file containing line delimited 
 	bucket names

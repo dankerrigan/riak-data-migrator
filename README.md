@@ -76,7 +76,7 @@ Usage:
 
 Options:
 ```
-Data Transfer (required, one of: d, l or k)
+Data Transfer (required, one of: d, l, k, or delete)
 -d Export (Dump) the contents bucket(s) (keys and objects), in ProtoBuf format, to files
 -l Import (Load) the contents of bucket(s) exported by the data migrator, from files.
 -k Export a list of Keys only (not object values) from bucket(s), to a text file. (Not to be used with -t)
@@ -85,6 +85,9 @@ Settings Transfer (optional, used with to -d or -l)
 -t Transfer custom bucket properties only (no data), to and from files on disk. 
    You must specify one or more buckets (not to be used with -a, the All Buckets option).
    You must also specify -d to export or -l to import, with this option.
+
+Delete a bucket
+--delete Delete bucket data. Cannot be used with -d, -l, -k, or -t. Must be used with -b or -f  
 
 Path (required)
 -r <path> Set the path for data to be loaded to or dumped from (path must be valid)
