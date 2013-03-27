@@ -13,13 +13,9 @@ import org.slf4j.LoggerFactory;
 
 import com.basho.proserv.datamigrator.io.Key;
 import com.basho.proserv.datamigrator.util.NamedThreadFactory;
-import com.basho.riak.client.IRiakObject;
-import com.basho.riak.client.raw.pbc.ConversionUtilWrapper;
-import com.basho.riak.pbc.RiakObject;
-import com.google.protobuf.ByteString;
 
-public class ThreadedClientDataReader extends AbstractClientDataReader {
-	private final Logger log = LoggerFactory.getLogger(ThreadedClientDataReader.class);
+public class ThreadedClientDataDeleter extends AbstractClientDataDeleter {
+	private final Logger log = LoggerFactory.getLogger(ThreadedClientDataDeleter.class);
 	private static final int MAX_QUEUE_SIZE = 10000;
 	private static final int WORKER_PROC_MULTIPLER = 2;
 
@@ -29,70 +25,61 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 	private final int workerCount;
 	private final ArrayBlockingQueue<Key> keyQueue = 
 			new ArrayBlockingQueue<Key>(MAX_QUEUE_SIZE);
-	private final ArrayBlockingQueue<IRiakObject> returnQueue = 
-			new ArrayBlockingQueue<IRiakObject>(MAX_QUEUE_SIZE);
+	private final ArrayBlockingQueue<Key> returnQueue = 
+			new ArrayBlockingQueue<Key>(MAX_QUEUE_SIZE);
 	
 	private static String ERROR_STRING = "ERRORERRORERROR";
-	private static ByteString ERROR_FLAG = ByteString.copyFromUtf8(ERROR_STRING);
 	private static Key ERROR_KEY = new Key(ERROR_STRING, ERROR_STRING);
-	private static IRiakObject ERROR_OBJECT = ConversionUtilWrapper.convertConcreteToInterface(
-			new RiakObject(ERROR_FLAG, ERROR_FLAG, ERROR_FLAG, ERROR_FLAG));
 	private static String STOP_STRING = "STOPSTOPSTOPSTOPSTOP";
-	private static ByteString STOP_FLAG = ByteString.copyFromUtf8(STOP_STRING);
 	private static Key STOP_KEY = new Key(STOP_STRING, STOP_STRING);
-	private static IRiakObject STOP_OBJECT = ConversionUtilWrapper.convertConcreteToInterface(
-			new RiakObject(STOP_FLAG, STOP_FLAG, STOP_FLAG, STOP_FLAG));
 	
 	private List<Future<Runnable>> threads = new ArrayList<Future<Runnable>>();
 	private int stopCount = 0;
 	
-	public ThreadedClientDataReader(Connection connection, 
-								   IClientReaderFactory clientReaderFactory,
+	public ThreadedClientDataDeleter(Connection connection, 
 								   Iterable<Key> keySource) {
-		this(connection, 
-			 clientReaderFactory, 
+		this(connection,  
 			 keySource, 
 			 Runtime.getRuntime().availableProcessors() * WORKER_PROC_MULTIPLER);
 	}
 	
-	public ThreadedClientDataReader(Connection connection, 
-				IClientReaderFactory clientReaderFactory, 
+	public ThreadedClientDataDeleter(Connection connection, 
 				Iterable<Key> keySource,
 				int workerCount) {
-		super(connection, clientReaderFactory, keySource);
+		super(connection, keySource);
 		this.workerCount = workerCount;
 		
 		this.run();
 	}
 	
-	public IRiakObject readObject() throws IOException {
-		IRiakObject riakObject = null;
+	public Key deleteObject() throws IOException {
+		Key key = null;
 		
 		try {
 //			riakObject = this.returnQueue.take();
-			while ((riakObject = this.returnQueue.poll()) == null) {
-				log.debug("waiting on return");
+			while ((key = this.returnQueue.poll()) == null) {
+//				log.debug("waiting on return");
 				Thread.sleep(10);
 			}
 			
 			//fast exit if not flag
-			if (isStop(riakObject) || isError(riakObject)) {
+			if (isStop(key) || isError(key)) {
 				while (!Thread.currentThread().isInterrupted()) {
 
 					
-					if (isStop(riakObject)) {
+					if (isStop(key)) {
 						++stopCount;
 						if (this.stopCount == this.workerCount) {
-							riakObject = null;
+							key = null;
 							break;
 						}
-					} else if (isError(riakObject)) {
+					} else if (isError(key)) {
 						this.interruptWorkers();
-						throw new IOException("Error reading Riak Object, shutting down bucket load process");
+						throw new IOException("Error deleting Riak Object, shutting down bucket load process");
 					} else { 
 						break;
 					}
-					riakObject = this.returnQueue.take();
+					key = this.returnQueue.take();
 				}
 			}
 		} catch (InterruptedException e) {
@@ -104,29 +91,30 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 			this.close();
 		}
 		
-		return riakObject;
+		return key;
 	}
 	
-	private static boolean isStop(IRiakObject riakObject) {
-		return riakObject.getBucket().compareTo(STOP_STRING) == 0;
+	private static boolean isStop(Key key) {
+		return key.bucket().compareTo(STOP_STRING) == 0;
 	}
 	
-	private static boolean isError(IRiakObject riakObject) {
-		return riakObject.getBucket().compareTo(ERROR_STRING) == 0;
+	private static boolean isError(Key key) {
+		return key.bucket().compareTo(ERROR_STRING) == 0;
 	}
 	
 	@SuppressWarnings("unchecked")
 	private void run() {
 		for (int i = 0; i < workerCount; ++i) {
-			threadFactory.setNextThreadName(String.format("ClientReaderThread-%d", i));
-			this.threads.add((Future<Runnable>) this.executor.submit(new ClientReaderThread(
-										this.clientReaderFactory.createClientReader(this.connection),
+			threadFactory.setNextThreadName(String.format("ClientDeleterThread-%d", i));
+			this.threads.add((Future<Runnable>) this.executor.submit(new ClientDeleterThread(
+										new ClientDeleter(this.connection),
 										this.keyQueue, 
 										this.returnQueue)));
 		}
-		threadFactory.setNextThreadName("KeyReaderThread");
-		this.threads.add((Future<Runnable>) this.executor.submit(new KeyReaderThread(this.keySource, this.keyQueue, 
-				this.workerCount)));
+		threadFactory.setNextThreadName("KeyDeleterThread");
+		this.threads.add((Future<Runnable>) this.executor.submit(
+					new KeyReaderThread(this.keySource, this.keyQueue, 
+								this.workerCount)));
 	}
 	
 	private void interruptWorkers() {
@@ -179,22 +167,23 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 		}
 	}
 	
-	private class ClientReaderThread implements Runnable {
+	private class ClientDeleterThread implements Runnable {
 
-		private final IClientReader reader;
+		private final IClientDeleter deleter;
 		private final ArrayBlockingQueue<Key> keyQueue;
-		private final ArrayBlockingQueue<IRiakObject> returnQueue;
+		private final ArrayBlockingQueue<Key> returnQueue;
 		
-		public ClientReaderThread(IClientReader reader,
+		public ClientDeleterThread(IClientDeleter deleter,
 				ArrayBlockingQueue<Key> keyQueue,
-				ArrayBlockingQueue<IRiakObject> returnQueue) {
-			this.reader = reader;
+				ArrayBlockingQueue<Key> returnQueue) {
+			this.deleter = deleter;
 			this.keyQueue = keyQueue;
 			this.returnQueue = returnQueue;
 		}
 		
 		@Override
 		public void run() {
+			
 			try {
 				try {
 					while (!Thread.currentThread().isInterrupted()) {
@@ -206,22 +195,19 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 						 if (key.bucket() == STOP_STRING) {
 							 break;
 						 } else if (key.bucket() == ERROR_STRING) {
-							 returnQueue.put(ERROR_OBJECT);
+							 returnQueue.put(ERROR_KEY);
 						 }
 						 int retries = 0;
 						 while (!Thread.currentThread().isInterrupted() && retries < MAX_RETRIES) {
 							 try {
-								 RiakObject[] objects = this.reader.fetchRiakObject(key.bucket(), key.key());
-								 for (int i = 0; i < objects.length; ++i) {
-									 IRiakObject riakObject = ConversionUtilWrapper.convertConcreteToInterface(objects[i]);
-									 while (!Thread.interrupted() && !returnQueue.offer(riakObject)) {
-										 Thread.sleep(10);
-									 }
+								 Key returnKey = this.deleter.deleteKey(key);
+								 while (!Thread.interrupted() && !returnQueue.offer(returnKey)) {
+									 Thread.sleep(10);
 								 }
 								 break;
 							 } catch (IOException e) {
 								 ++retries;
-								 log.error(String.format("Fetch fail %d on key %s, retrying", retries, key.key()), e);
+								 log.error(String.format("Delete fail %d on key %s, retrying", retries, key.key()), e);
 								 Thread.sleep(RETRY_WAIT_TIME);
 								 if (retries > MAX_RETRIES) {
 									 log.error(String.format("Max retries %d reached", MAX_RETRIES), e);
@@ -230,9 +216,9 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 							 }
 						 }
 					}
-					returnQueue.put(STOP_OBJECT);
+					returnQueue.put(STOP_KEY);
 				} catch (IOException e ) {
-					returnQueue.put(ERROR_OBJECT);
+					returnQueue.put(ERROR_KEY);
 				}
 			} catch (InterruptedException e) {
 				// no-op, allow to exit
