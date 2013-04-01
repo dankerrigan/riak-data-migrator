@@ -34,7 +34,7 @@ public class ClientDataWriter extends AbstractClientDataWriter {
 			} catch (IOException e) {
 				++retries;
 				if (retries > MAX_RETRIES) {
-					log.error("Max retries reached");
+					log.error("Max retries reached", e);
 					throw e;
 				}
 			}

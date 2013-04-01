@@ -46,13 +46,13 @@ To transfer data from one Riak cluster to another:
 Downloading:
 ------------------------
 You can download the ready to run jar file at:
-http://ps-tools.data.riakcs.net:8080/riak-data-migrator-0.1.4-bin.tar.gz
+http://ps-tools.data.riakcs.net:8080/riak-data-migrator-0.1.9-bin.tar.gz
 
 After downloading, unzip/untar it, and it's ready to run from its directory.
 ```bash
-tar -xvzf riak-data-migrator-0.1.4-bin.tar.gz
-cd riak-data-migrator-0.1.4
-java -jar riak-data-migrator-0.1.4.jar [options]
+tar -xvzf riak-data-migrator-0.1.9-bin.tar.gz
+cd riak-data-migrator-0.1.9
+java -jar riak-data-migrator-0.1.9.jar [options]
 ```
 
 Building from source:
@@ -67,16 +67,16 @@ mvn package
 ```
 
     The compiled .jar file is located in the ```target/``` directory.
-    The usable binary file is ```riak-data-migrator-0.1.4-bin.tar.gz```
+    The usable binary file is ```riak-data-migrator-0.1.9-bin.tar.gz```
 
 Usage:
 ------------------------
 Usage:  
-```java -jar riak-data-migrator-0.1.4.jar [options]```
+```java -jar riak-data-migrator-0.1.9.jar [options]```
 
 Options:
 ```
-Data Transfer (required, one of: d, l or k)
+Data Transfer (required, one of: d, l, k, or delete)
 -d Export (Dump) the contents bucket(s) (keys and objects), in ProtoBuf format, to files
 -l Import (Load) the contents of bucket(s) exported by the data migrator, from files.
 -k Export a list of Keys only (not object values) from bucket(s), to a text file. (Not to be used with -t)
@@ -85,6 +85,9 @@ Settings Transfer (optional, used with to -d or -l)
 -t Transfer custom bucket properties only (no data), to and from files on disk. 
    You must specify one or more buckets (not to be used with -a, the All Buckets option).
    You must also specify -d to export or -l to import, with this option.
+
+Delete a bucket
+--delete Delete bucket data. Cannot be used with -d, -l, -k, or -t. Must be used with -b or -f  
 
 Path (required)
 -r <path> Set the path for data to be loaded to or dumped from (path must be valid)
@@ -112,22 +115,22 @@ Concurrency and Misc Settings
 Examples:
 -------------------------
 Dump (the contents of) all buckets from Riak:  
-```java -jar riak-data-migrator-0.1.4.jar -d -r /var/riak_export -a -h 127.0.0.1 -p 8087 -H 8098```
+```java -jar riak-data-migrator-0.1.9.jar -d -r /var/riak_export -a -h 127.0.0.1 -p 8087 -H 8098```
 
 Load all buckets previously dumped back into Riak:  
-```java -jar riak-data-migrator-0.1.4.jar -l -r /var/riak-export -a -h 127.0.0.1 -p 8087 -H 8098```
+```java -jar riak-data-migrator-0.1.9.jar -l -r /var/riak-export -a -h 127.0.0.1 -p 8087 -H 8098```
 
 Dump (the contents of) buckets listed in a line delimited file from a Riak cluster:  
 <pre>
-java -jar riak-data-migrator-0.1.3.jar -d -f /home/riakadmin/buckets_to_export.txt -r \  
+java -jar riak-data-migrator-0.1.9.jar -d -f /home/riakadmin/buckets_to_export.txt -r \  
 /var/riak-export -c /home/riakadmin/riak_hosts.txt -p 8087 -H 8098
 </pre>
 
 Export only the bucket settings from a bucket named "Flights":  
-```java -jar riak-data-migrator-0.1.4.jar -d -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098```
+```java -jar riak-data-migrator-0.1.9.jar -d -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098```
 
 Load bucket settings for a bucket named "Flights":  
-```java -jar riak-data-migrator-0.1.4.jar -l -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098```
+```java -jar riak-data-migrator-0.1.9.jar -l -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098```
 
 Caveats:
 ------------------------

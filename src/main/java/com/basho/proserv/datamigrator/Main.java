@@ -1,6 +1,7 @@
 package com.basho.proserv.datamigrator;
 
 import java.io.File;
+import java.util.Map;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -35,14 +36,17 @@ public class Main {
 		if (cmd.hasOption("k")) {
 			++cmdCount;
 		}
+		if (cmd.hasOption("delete")) {
+			++cmdCount;
+		}
 		
 		
 		if (cmdCount == 0) {
-			System.out.println("You must specify l, d or k");
+			System.out.println("You must specify l, d, k, or delete");
 			System.exit(1);
 		}
 		if (cmdCount > 1) {
-			System.out.println("Load (l), Dump (d), Keys and (k) are exclusive options.");
+			System.out.println("Load (l), Dump (d), Keys (k) and Delete (delete) are exclusive options.");
 			System.exit(1);
 		}
 		
@@ -51,13 +55,25 @@ public class Main {
 			System.exit(1);
 		}
 		
-		
 		if (cmd.hasOption('a') && cmd.hasOption('t')) {
 			System.out.println("All Buckets (a) not compatible with Bucket Properties (t).");
 			System.exit(1);
 		}
 		
+		if (cmd.hasOption("delete") && cmd.hasOption('t')) {
+			System.out.println("Delete (delete) not compatible with Bucket Properties (t).");
+			System.exit(1);
+		}
+		
+		if (cmd.hasOption("delete") && cmd.hasOption("a")) {
+			System.out.println("Delete not compatible with All (a) option. Specify buckets indidually instead.");
+		}
+		
 		Configuration config = handleCommandLine(cmd);
+		
+		if (cmd.hasOption("delete")) {
+			runDelete(config);
+		}
 		
 		if (cmd.hasOption("l") || (cmd.hasOption("l") && cmd.hasOption("t"))) {
 			runLoader(config);
@@ -169,7 +185,16 @@ public class Main {
 			}
 		}
 		if (cmd.hasOption("k")) { // if keys only....
-			config.setOperation(Configuration.Operation.ALL_KEYS);
+			if (config.getBucketNames().size() > 0) {
+				config.setOperation(Configuration.Operation.BUCKET_KEYS);
+			} else {
+				config.setOperation(Configuration.Operation.ALL_KEYS);
+			}
+		}
+		if (cmd.hasOption("delete")) {
+			if (config.getBucketNames().size() > 0) {
+				config.setOperation(Configuration.Operation.DELETE_BUCKETS);
+			}
 		}
 		
 		//Verbose output
@@ -201,6 +226,38 @@ public class Main {
 		return config;
 	}
 
+	public static void runDelete(Configuration config) {
+		Connection connection = new Connection(config.getMaxRiakConnections());
+		
+		if (config.getHosts().size() == 1) {
+			String host = config.getHosts().toArray(new String[1])[0];
+			connection.connectPBClient(host, config.getPort());
+		} else {
+			connection.connectPBCluster(config.getHosts(), config.getPort());
+		}
+		
+		if (!connection.testConnection()) {
+			System.out.println(String.format("Could not connect to Riak on PB port %d", config.getPort()));
+			System.exit(-1);
+		}
+		
+		BucketDelete deleter = new BucketDelete(connection, config.getVerboseStatus());
+		
+//		long start = System.currentTimeMillis();
+		long deleteCount = 0;
+		if (config.getOperation() == Configuration.Operation.DELETE_BUCKETS) {
+			deleteCount = deleter.deleteBuckets(config.getBucketNames());
+		}
+//		long stop = System.currentTimeMillis();
+		
+		connection.close();
+		
+//		double totalTime = ((stop-start)/1000.0);
+//		Double recsPerSec = deleteCount / totalTime;
+//		System.out.println("\nLoaded " + loadCount + " in " + totalTime + " seconds. " + recsPerSec + " objects/sec");
+		printSummary(deleter.summary, "Load Summary:");
+	}
+	
 	public static void runLoader(Configuration config) {
 		Connection connection = new Connection(config.getMaxRiakConnections());
 		Connection httpConnection = new Connection();
@@ -226,7 +283,7 @@ public class Main {
 		BucketLoader loader = new BucketLoader(connection, httpConnection, config.getFilePath(), 
 				config.getVerboseStatus(), config.getRiakWorkerCount(), config.getResetVClock());
 		
-		long start = System.currentTimeMillis();
+//		long start = System.currentTimeMillis();
 		long loadCount = 0;
 		if (config.getOperation() == Configuration.Operation.BUCKETS) {
 			loadCount = loader.LoadBuckets(config.getBucketNames());
@@ -235,14 +292,15 @@ public class Main {
 		} else {
 			loadCount = loader.LoadAllBuckets();
 		}
-		long stop = System.currentTimeMillis();
+//		long stop = System.currentTimeMillis();
 		
 		connection.close();
 		httpConnection.close();
 		
-		double totalTime = ((stop-start)/1000.0);
-		Double recsPerSec = loadCount / totalTime;
-		System.out.println("\nLoaded " + loadCount + " in " + totalTime + " seconds. " + recsPerSec + " objects/sec");
+//		double totalTime = ((stop-start)/1000.0);
+//		Double recsPerSec = loadCount / totalTime;
+//		System.out.println("\nLoaded " + loadCount + " in " + totalTime + " seconds. " + recsPerSec + " objects/sec");
+		printSummary(loader.summary, "Load Summary:");
 	}
 	
 	public static void runDumper(Configuration config) {
@@ -273,7 +331,7 @@ public class Main {
 		
 		boolean keysOnly = (config.getOperation() == Configuration.Operation.ALL_KEYS ||
 				config.getOperation() == Configuration.Operation.BUCKET_KEYS);
-		long start = System.currentTimeMillis();
+//		long start = System.currentTimeMillis();
 		long dumpCount = 0;
 		if (config.getOperation() == Configuration.Operation.BUCKETS || 
 				config.getOperation() == Configuration.Operation.BUCKET_KEYS) {
@@ -283,20 +341,62 @@ public class Main {
 		} else {
 			dumpCount = dumper.dumpAllBuckets(config.getResume(), keysOnly);
 		}
-		long stop = System.currentTimeMillis();
+//		long stop = System.currentTimeMillis();
 		
 		connection.close();
 		httpConnection.close();
 		
-		double totalTime = ((stop-start)/1000.0);
-		double recsPerSec = dumpCount / totalTime;
-		System.out.println("\nDumped " + dumpCount + " in " + totalTime + " seconds. " + recsPerSec + " objects/sec");
+//		double totalTime = ((stop-start)/1000.0);
+//		double recsPerSec = dumpCount / totalTime;
+//		System.out.println("\nDumped " + dumpCount + " in " + totalTime + " seconds. " + recsPerSec + " objects/sec");
+		printSummary(dumper.summary, "Dump Summary:");
 	}
 	
 	public static void printHelp(String arg) {
 		Options options = createOptions();
 		HelpFormatter formatter = new HelpFormatter();
 		formatter.printHelp(arg, options);
+	}
+	
+	private static void printSummary(Summary summary, String title) {
+		Map<String, Long[]> bucketStats = summary.getStatistics();
+		System.out.println();
+		System.out.println(title);
+		System.out.println(String.format("%15s%12s%12s%12s","Bucket","Objects","Seconds","Objs/Sec"));
+		long totalRecords = 0;
+		long totalTime = 0;
+		for (String bucketName : summary.bucketNames()) {
+			Long[] count_time = bucketStats.get(bucketName);
+			String line = null;
+			if (count_time[0] < 0) {
+				String errorString = "ERROR";
+				if (count_time[0] == -2) {
+					errorString = "KEY LIST ERROR";
+				} else if (count_time[0] == -3) {
+					errorString = "BUCKET DELETE ERROR";
+				}
+				line = String.format("%15s%12s%12s%12s", 
+						bucketName, 
+						errorString,
+						errorString,
+						errorString);
+			} else {
+				totalRecords += count_time[0];
+				totalTime += count_time[1];
+				line = String.format("%15s%12d%12.1f%12.1f",
+						bucketName,
+						count_time[0],
+						count_time[1]/1000.0,
+						count_time[0]/(count_time[1]/1000.0));
+			}
+			System.out.println(line);
+		}
+		String line = String.format("%15s%12d%12.1f%12.1f",
+				"Total:",
+				totalRecords,
+				totalTime/1000.0,
+				totalRecords/(totalTime/1000.0));
+		System.out.println(line);
 	}
 	
 	private static CommandLine parseCommandLine(Options options, String[] args) throws ParseException {
@@ -326,7 +426,7 @@ public class Main {
 		options.addOption("resetvclock", false, "Resets object's VClock prior to being loaded in Riak");
 		options.addOption("riakworkercount", true, "Specify Riak Worker Count");
 		options.addOption("maxriakconnections", true, "Specify the max number of connections maintained in the Riak Connection Pool");
-		
+		options.addOption("delete", false, "Delete specified buckets");
 		return options;
 	}
 	

@@ -23,7 +23,7 @@ public class RiakBucketProperties {
 		try {
 			bucketProperties = this.connection.riakClient.fetchBucket(bucketName);
 		} catch (IOException e) {
-			log.error("Coudldn't retrieve bucket");
+			log.error("Coudldn't retrieve bucket", e);
 			return null;
 		}
 		return bucketProperties;
@@ -34,7 +34,7 @@ public class RiakBucketProperties {
 		try {
 			this.connection.riakClient.updateBucket(bucketName, bucketProperties);
 		} catch (IOException e) {
-			log.error("Couldn't set bucket properties for bucket " +  bucketName);
+			log.error("Couldn't set bucket properties for bucket " +  bucketName, e);
 			success = false;
 		}
 		
@@ -55,7 +55,7 @@ public class RiakBucketProperties {
 			writer.flush();
 			writer.close();
 		} catch (IOException e) {
-			log.error("Could not close bucket properties file");
+			log.error("Could not close bucket properties file", e);
 			return false;
 		}
 		return true;

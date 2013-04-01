@@ -25,6 +25,7 @@ import com.basho.riak.client.bucket.BucketProperties;
 // BucketLoader will only work with clients returning protobuffer objects, ie PBClient
 public class BucketLoader {
 	private final Logger log = LoggerFactory.getLogger(BucketLoader.class);
+	public final Summary summary = new Summary();
 	private final Connection connection;
 	private final Connection httpConnection;
 	private final File dataRoot;
@@ -64,7 +65,7 @@ public class BucketLoader {
 			if (this.verboseStatusOutput) {
 				System.out.println("Loading bucket properties for " + bucketName);
 			}
-			File path = new File(this.createBucketPath(bucketName));
+			File path = new File(this.createBucketPath(bucketName, true));
 			if (!path.exists()) {
 				path.mkdir();
 			}
@@ -94,6 +95,7 @@ public class BucketLoader {
 	}
 	
 	public long LoadBucket(String bucketName) {
+		long start = System.currentTimeMillis();
 		if (bucketName == null || bucketName.isEmpty()) {
 			throw new IllegalArgumentException("bucketName cannot be null or empty");
 		}
@@ -106,6 +108,13 @@ public class BucketLoader {
 		this.previousCount = 0;
 		
 		RiakObjectBucket dumpBucket = this.createBucket(bucketName);
+		if (!dumpBucket.dataFilesExist()) {
+			this.summary.addStatistic(bucketName, -1l, 0l);
+			if (this.verboseStatusOutput) {
+				System.out.println(String.format("No data files found for bucket %s", bucketName));
+			}
+			return 0;
+		}
 //		this.restoreBucketSettings(bucketName, dumpBucket.getFileRoot());
 		File keyPath = new File(dumpBucket.getFileRoot().getAbsoluteFile() + "/bucketkeys.keys");
 		long keyCount = this.scanKeysForBucketSize(keyPath);
@@ -115,7 +124,7 @@ public class BucketLoader {
 						this.riakWorkerCount);
 
 		KeyJournal keyJournal = new KeyJournal(
-				KeyJournal.createKeyPathFromPath(new File(this.createBucketPath(bucketName) + "/keys" ), true), 
+				KeyJournal.createKeyPathFromPath(new File(this.createBucketPath(bucketName, true) + "/keys" ), true), 
 					KeyJournal.Mode.WRITE);
 		
 		try {
@@ -137,10 +146,12 @@ public class BucketLoader {
 			dumpBucket.close();
 		}
 	
+		long stop = System.currentTimeMillis();
+		summary.addStatistic(bucketName, objectCount, stop - start);
+		
 		if (this.verboseStatusOutput) {
 			this.printStatus(keyCount, objectCount, true);
 		}
-		
 		return objectCount;
 	}
 	
@@ -152,13 +163,11 @@ public class BucketLoader {
 		this.connection.close();
 	}
 
-	public String createBucketPath(String bucketName) {
-		String fullPathname;
-		try {
-			fullPathname = this.dataRoot.getAbsolutePath() + "/" + URLEncoder.encode(bucketName,"UTF-8");
-		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException("Unsupported Encoding Exception - UTF-8");
+	public String createBucketPath(String bucketName, boolean urlEncode) {
+		if (urlEncode) {
+			bucketName = Utilities.urlEncode(bucketName);
 		}
+		String fullPathname = this.dataRoot.getAbsolutePath() + "/" + bucketName;
 		return fullPathname;
 	}
 	
@@ -206,7 +215,7 @@ public class BucketLoader {
 	}
 	
 	private RiakObjectBucket createBucket(String bucketName) {
-		String fullPathname = this.createBucketPath(bucketName);
+		String fullPathname = this.createBucketPath(bucketName, true);
 		File fullPath = new File(fullPathname);
 		
 		return new RiakObjectBucket(fullPath, RiakObjectBucket.BucketMode.READ, this.resetVClock);
@@ -216,10 +225,11 @@ public class BucketLoader {
 		Set<String> buckets = new HashSet<String>();
 		
 		for (String bucketName : this.dataRoot.list()) {
-			String fullPathname = this.createBucketPath(bucketName);
+			String fullPathname = this.createBucketPath(bucketName, false);
 			File fullPath = new File(fullPathname);
 			if (fullPath.isDirectory()) {
-				buckets.add(bucketName);
+				String decodedBucketName = Utilities.urlDecode(bucketName); 
+				buckets.add(decodedBucketName);
 			}
 		}
 		

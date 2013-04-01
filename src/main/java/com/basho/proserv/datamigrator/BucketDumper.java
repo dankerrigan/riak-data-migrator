@@ -22,6 +22,7 @@ import com.basho.riak.client.bucket.BucketProperties;
 // BucketDumper will only work with clients returning protobuffer objects, ie PBClient
 public class BucketDumper {
 	private final Logger log = LoggerFactory.getLogger(BucketDumper.class);
+	public final Summary summary = new Summary();
 	private final Connection connection;
 	private final Connection httpConnection;
 	private final File dataRoot;
@@ -106,6 +107,8 @@ public class BucketDumper {
 			throw new UnsupportedOperationException("Resume is currently unsupported");
 		}
 
+		long start = System.currentTimeMillis();
+		
 		if (!this.connection.connected()) {
 			log.error("Not connected to Riak");
 			return 0;
@@ -129,10 +132,13 @@ public class BucketDumper {
 			keyCount = this.dumpBucketKeys(bucketName, keyPath);
 		} catch (IOException e){
 			log.error("Error listing keys for bucket " + bucketName, e);
+			this.summary.addStatistic(bucketName, -2l, 0l);
 			return 0;
 		}
 		
 		if (keysOnly) {
+			String bucketNameKeys= String.format("%s keys", bucketName);
+			this.summary.addStatistic(bucketNameKeys, keyCount, System.currentTimeMillis()-start);
 			return keyCount;
 		}
 		
@@ -163,13 +169,18 @@ public class BucketDumper {
 				}	
 			}
 		} catch (IOException e) {
-			log.error("Riak error dumping objects for bucket: " + bucketName);
+			log.error("Riak error dumping objects for bucket: " + bucketName, e);
+			this.summary.addStatistic(bucketName, -1l, 0l);
 			e.printStackTrace();
 			++errorCount;
 		} finally {
 			keyJournal.close();
 			dumpBucket.close();
 		}
+		
+		long stop = System.currentTimeMillis();
+		
+		this.summary.addStatistic(bucketName, objectCount, stop-start);
 		
 		if (this.verboseStatusOutput) {
 			this.printStatus(keyCount, objectCount, true);
@@ -228,11 +239,8 @@ public class BucketDumper {
 	}
 	
 	private String createBucketPath(String bucketName) {
-		try {
-			return this.dataRoot.getAbsolutePath() + "/" + URLEncoder.encode(bucketName,"UTF-8");
-		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException("UnsupportedEncodingExcpetion - UTF-8");
-		}
+		String encodedBucketName = Utilities.urlEncode(bucketName);
+		return this.dataRoot.getAbsolutePath() + "/" + encodedBucketName;
 	}
 	
 	private RiakObjectBucket createBucket(String bucketName) {

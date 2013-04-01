@@ -11,7 +11,12 @@ public class Configuration {
 	private static int DEFAULT_RIAK_PB_PORT = 8087;
 	private static int DEFAULT_RIAK_HTTP_PORT = 8098;
 	public static enum Mode { LOAD, DUMP };
-	public static enum Operation { ALL_BUCKETS, BUCKETS, ALL_KEYS, BUCKET_KEYS, BUCKET_PROPERTIES};
+	public static enum Operation { ALL_BUCKETS, 
+								   BUCKETS, 
+								   ALL_KEYS, 
+								   BUCKET_KEYS, 
+								   BUCKET_PROPERTIES,
+								   DELETE_BUCKETS};
 
 	
 	
