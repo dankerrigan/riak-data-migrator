@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 import com.basho.proserv.datamigrator.io.Key;
 import com.basho.proserv.datamigrator.io.KeyJournal;
 import com.basho.proserv.datamigrator.riak.AbstractClientDataDeleter;
-import com.basho.proserv.datamigrator.riak.ClientDataDeleter;
 import com.basho.proserv.datamigrator.riak.Connection;
 import com.basho.proserv.datamigrator.riak.ThreadedClientDataDeleter;
 

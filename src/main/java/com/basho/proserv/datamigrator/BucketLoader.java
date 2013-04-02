@@ -2,8 +2,6 @@ package com.basho.proserv.datamigrator;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.util.HashSet;
 import java.util.Set;
 

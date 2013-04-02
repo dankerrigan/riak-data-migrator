@@ -208,7 +208,6 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 			this.nextObject = this.riakObjectBucket.readRiakObject();
 		}
 		
-		@Override
 		public boolean hasNext() {
 			return nextObject != null;
 		}
