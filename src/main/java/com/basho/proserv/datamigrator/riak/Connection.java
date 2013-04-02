@@ -6,7 +6,6 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 import com.basho.riak.client.raw.RawClient;
 import com.basho.riak.client.raw.http.HTTPClientConfig;
 import com.basho.riak.client.raw.http.HTTPClusterClientFactory;

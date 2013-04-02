@@ -94,7 +94,7 @@ public class KeyJournal implements Iterable<Key> {
 		return this.closed;
 	}
 
-	@Override
+	
 	public Iterator<Key> iterator() {
 		return new KeyIterator(this);
 	}
@@ -128,12 +128,12 @@ public class KeyJournal implements Iterable<Key> {
 			}
 		}
 		
-		@Override
+		
 		public boolean hasNext() {
 			return this.nextKey != null;
 		}
 
-		@Override
+		
 		public Key next() {
 			Key currentKey = this.nextKey;
 			try {
@@ -147,7 +147,7 @@ public class KeyJournal implements Iterable<Key> {
 			return currentKey;
 		}
 
-		@Override
+		
 		public void remove() {
 			throw new UnsupportedOperationException();
 		}

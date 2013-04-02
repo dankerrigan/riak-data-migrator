@@ -1,6 +1,6 @@
 package com.basho.riak.pbc;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;

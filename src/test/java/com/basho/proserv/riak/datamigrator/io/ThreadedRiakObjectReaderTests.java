@@ -1,14 +1,12 @@
 package com.basho.proserv.riak.datamigrator.io;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import com.basho.proserv.datamigrator.io.Key;
-import com.basho.proserv.datamigrator.io.KeyJournal;
 import com.basho.proserv.datamigrator.io.RiakObjectWriter;
 import com.basho.proserv.datamigrator.io.ThreadedRiakObjectReader;
 import com.basho.riak.client.IRiakObject;
@@ -39,9 +37,8 @@ public class ThreadedRiakObjectReaderTests {
 		ThreadedRiakObjectReader reader = new ThreadedRiakObjectReader(data, false);
 		
 		
-		IRiakObject object = null;
 		int readCount = 0;
-		while ((object = reader.readRiakObject()) != null) {
+		while (reader.readRiakObject() != null) {
 			++readCount;	
 		}
 		

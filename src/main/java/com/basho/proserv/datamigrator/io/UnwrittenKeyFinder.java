@@ -30,7 +30,7 @@ public class UnwrittenKeyFinder implements Iterable<Key> {
 		return this.referenceKeySet.contains(key);
 	}
 
-	@Override
+	
 	public Iterator<Key> iterator() {
 		return new UnwrittenKeyIterator(this);
 	}
@@ -54,12 +54,12 @@ public class UnwrittenKeyFinder implements Iterable<Key> {
 			this.setNextKey();
 		}
 		
-		@Override
+		
 		public boolean hasNext() {
 			return nextKey == null;
 		}
 
-		@Override
+		
 		public Key next() {
 			Key currentKey = this.nextKey;
 			this.setNextKey();
@@ -81,7 +81,7 @@ public class UnwrittenKeyFinder implements Iterable<Key> {
 			}
 		}
 
-		@Override
+		
 		public void remove() {
 			// TODO Auto-generated method stub
 			

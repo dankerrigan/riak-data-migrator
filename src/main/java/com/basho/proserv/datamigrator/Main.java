@@ -243,18 +243,12 @@ public class Main {
 		
 		BucketDelete deleter = new BucketDelete(connection, config.getVerboseStatus());
 		
-//		long start = System.currentTimeMillis();
-		long deleteCount = 0;
 		if (config.getOperation() == Configuration.Operation.DELETE_BUCKETS) {
-			deleteCount = deleter.deleteBuckets(config.getBucketNames());
+			deleter.deleteBuckets(config.getBucketNames());
 		}
-//		long stop = System.currentTimeMillis();
 		
 		connection.close();
 		
-//		double totalTime = ((stop-start)/1000.0);
-//		Double recsPerSec = deleteCount / totalTime;
-//		System.out.println("\nLoaded " + loadCount + " in " + totalTime + " seconds. " + recsPerSec + " objects/sec");
 		printSummary(deleter.summary, "Load Summary:");
 	}
 	
@@ -283,23 +277,17 @@ public class Main {
 		BucketLoader loader = new BucketLoader(connection, httpConnection, config.getFilePath(), 
 				config.getVerboseStatus(), config.getRiakWorkerCount(), config.getResetVClock());
 		
-//		long start = System.currentTimeMillis();
-		long loadCount = 0;
 		if (config.getOperation() == Configuration.Operation.BUCKETS) {
-			loadCount = loader.LoadBuckets(config.getBucketNames());
+			loader.LoadBuckets(config.getBucketNames());
 		} else if (config.getOperation() == Configuration.Operation.BUCKET_PROPERTIES) {
-			loadCount = loader.loadBucketSettings(config.getBucketNames());
+			loader.loadBucketSettings(config.getBucketNames());
 		} else {
-			loadCount = loader.LoadAllBuckets();
+			loader.LoadAllBuckets();
 		}
-//		long stop = System.currentTimeMillis();
 		
 		connection.close();
 		httpConnection.close();
 		
-//		double totalTime = ((stop-start)/1000.0);
-//		Double recsPerSec = loadCount / totalTime;
-//		System.out.println("\nLoaded " + loadCount + " in " + totalTime + " seconds. " + recsPerSec + " objects/sec");
 		printSummary(loader.summary, "Load Summary:");
 	}
 	
@@ -331,24 +319,19 @@ public class Main {
 		
 		boolean keysOnly = (config.getOperation() == Configuration.Operation.ALL_KEYS ||
 				config.getOperation() == Configuration.Operation.BUCKET_KEYS);
-//		long start = System.currentTimeMillis();
-		long dumpCount = 0;
+
 		if (config.getOperation() == Configuration.Operation.BUCKETS || 
 				config.getOperation() == Configuration.Operation.BUCKET_KEYS) {
-			dumpCount = dumper.dumpBuckets(config.getBucketNames(), config.getResume(), keysOnly);
+			dumper.dumpBuckets(config.getBucketNames(), config.getResume(), keysOnly);
 		} else if (config.getOperation() == Configuration.Operation.BUCKET_PROPERTIES) {
-			dumpCount = dumper.dumpBucketSettings(config.getBucketNames());
+			dumper.dumpBucketSettings(config.getBucketNames());
 		} else {
-			dumpCount = dumper.dumpAllBuckets(config.getResume(), keysOnly);
+			dumper.dumpAllBuckets(config.getResume(), keysOnly);
 		}
-//		long stop = System.currentTimeMillis();
 		
 		connection.close();
 		httpConnection.close();
 		
-//		double totalTime = ((stop-start)/1000.0);
-//		double recsPerSec = dumpCount / totalTime;
-//		System.out.println("\nDumped " + dumpCount + " in " + totalTime + " seconds. " + recsPerSec + " objects/sec");
 		printSummary(dumper.summary, "Dump Summary:");
 	}
 	

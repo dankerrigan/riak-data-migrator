@@ -3,10 +3,10 @@ package com.basho.proserv.datamigrator.riak;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ArrayBlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -139,7 +139,7 @@ public class ThreadedClientDataDeleter extends AbstractClientDataDeleter {
 			this.stopCount = stopCount;
 		}
 		
-		@Override
+		
 		public void run() {
 			try {
 				for (Key key : keySource) {
@@ -181,7 +181,6 @@ public class ThreadedClientDataDeleter extends AbstractClientDataDeleter {
 			this.returnQueue = returnQueue;
 		}
 		
-		@Override
 		public void run() {
 			
 			try {

@@ -5,11 +5,8 @@ import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
 
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.basho.riak.pbc.RiakObject;
 
 import com.basho.riak.protobuf.RiakKvPB;
 import com.google.protobuf.InvalidProtocolBufferException;

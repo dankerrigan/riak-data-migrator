@@ -12,7 +12,6 @@ public class ClientWriter implements IClientWriter {
 		this.connection = connection;
 	}
 	
-	@Override
 	public IRiakObject storeRiakObject(IRiakObject riakObject) throws IOException {
 		this.connection.riakClient.store(riakObject);
 		return riakObject;
