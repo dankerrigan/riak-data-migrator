@@ -3,17 +3,14 @@ package com.basho.proserv.datamigrator.riak;
 import static org.junit.Assert.*;
 
 import java.io.File;
-import java.util.ArrayList;
 
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import com.basho.riak.client.bucket.BucketProperties;
 import com.basho.riak.client.builders.BucketPropertiesBuilder;
-import com.basho.riak.client.cap.Quora;
 import com.basho.riak.client.cap.Quorum;
 import com.basho.riak.client.query.functions.NamedErlangFunction;
-import com.basho.riak.client.query.functions.NamedFunction;
 
 public class RiakBucketPropertiesTests {
 

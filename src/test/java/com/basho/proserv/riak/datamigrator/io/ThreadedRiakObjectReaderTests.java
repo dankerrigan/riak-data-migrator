@@ -7,6 +7,7 @@ import java.io.File;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import com.basho.proserv.datamigrator.Configuration;
 import com.basho.proserv.datamigrator.io.Key;
 import com.basho.proserv.datamigrator.io.KeyJournal;
 import com.basho.proserv.datamigrator.io.RiakObjectWriter;
@@ -25,6 +26,7 @@ public class ThreadedRiakObjectReaderTests {
 		File data = tempFolder.newFile();
 		
 		RiakObjectWriter writer = new RiakObjectWriter(data);
+		Configuration config = new Configuration();
 		
 		for (int i = 0; i < RECORD_COUNT; ++i) {
 			IRiakObject riakObject = ConversionUtilWrapper.convertConcreteToInterface(
@@ -36,7 +38,7 @@ public class ThreadedRiakObjectReaderTests {
 		}
 		writer.close();
 		
-		ThreadedRiakObjectReader reader = new ThreadedRiakObjectReader(data, false);
+		ThreadedRiakObjectReader reader = new ThreadedRiakObjectReader(data, config.getResetVClock(), config.getQueueSize());
 		
 		
 		IRiakObject object = null;

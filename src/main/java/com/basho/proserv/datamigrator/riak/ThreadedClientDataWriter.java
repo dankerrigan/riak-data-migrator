@@ -20,17 +20,12 @@ import com.google.protobuf.ByteString;
 public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 	private final Logger log = LoggerFactory.getLogger(ThreadedClientDataWriter.class);
 //	public enum Status {SUCCESS, STOPPED, ERROR};
-	private static final int MAX_QUEUE_SIZE = 10000;
-	private static final int WORKER_PROC_MULTIPLER = 2;
-	
 	private final NamedThreadFactory threadFactory = new NamedThreadFactory();
 	private final ExecutorService executor = Executors.newCachedThreadPool(threadFactory);
 	
 	private final int workerCount;
-	private final ArrayBlockingQueue<IRiakObject> objectQueue = 
-			new ArrayBlockingQueue<IRiakObject>(MAX_QUEUE_SIZE);
-	private final ArrayBlockingQueue<IRiakObject> returnQueue = 
-			new ArrayBlockingQueue<IRiakObject>(MAX_QUEUE_SIZE);
+	private final ArrayBlockingQueue<IRiakObject> objectQueue;
+	private final ArrayBlockingQueue<IRiakObject> returnQueue;
 
 	private static String ERROR_STRING= "ERRORERRORERRORERROR";
 	private static ByteString ERROR_FLAG = ByteString.copyFromUtf8(ERROR_STRING);
@@ -46,20 +41,14 @@ public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 	private int stoppedCount = 0;
 	
 	public ThreadedClientDataWriter(Connection connection,
-			IClientWriterFactory clientWriterFactory,
-			Iterable<IRiakObject> objectSource) {
-		this(connection, 
-			 clientWriterFactory, 
-			 objectSource,
-			 Runtime.getRuntime().availableProcessors() * WORKER_PROC_MULTIPLER);
-	}
-	
-	public ThreadedClientDataWriter(Connection connection,
 			IClientWriterFactory clientWriterFactory, 
 			Iterable<IRiakObject> objectSource, 
-			int workerCount) {
+			int workerCount,
+			int queueSize) {
 		super(connection, clientWriterFactory, objectSource);
 		this.workerCount = workerCount;
+		this.objectQueue = new ArrayBlockingQueue<IRiakObject>(queueSize);
+		this.returnQueue = new ArrayBlockingQueue<IRiakObject>(queueSize);
 		
 		this.run();
 	}
@@ -74,9 +63,6 @@ public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 			if (isError(riakObject) || 
 					isStop(riakObject)) {
 				while (!Thread.interrupted()) {
-	//				while ((status = this.returnQueue.poll()) == null) {
-	//					Thread.sleep(10);
-	//				}
 					if (isError(riakObject)) {
 						this.interruptWorkers();
 						throw new IOException("Error writing Riak Object, shutting down bucket load process");

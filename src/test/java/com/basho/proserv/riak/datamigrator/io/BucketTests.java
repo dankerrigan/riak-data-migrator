@@ -7,6 +7,7 @@ import java.io.File;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import com.basho.proserv.datamigrator.Configuration;
 import com.basho.proserv.datamigrator.io.RiakObjectBucket;
 import com.basho.riak.client.IRiakObject;
 import com.basho.riak.client.raw.pbc.ConversionUtilWrapper;
@@ -26,8 +27,9 @@ public class BucketTests {
 		
 		File rootFolder = tempFolder.newFolder();
 		this.rootPath = rootFolder;
+		Configuration config = new Configuration();
 		
-		RiakObjectBucket writeBucket = new RiakObjectBucket(rootFolder, RiakObjectBucket.BucketMode.WRITE, bucketChunkSize, false);
+		RiakObjectBucket writeBucket = new RiakObjectBucket(rootFolder, RiakObjectBucket.BucketMode.WRITE, bucketChunkSize, config);
 		
 		IRiakObject riakObject = ConversionUtilWrapper.convertConcreteToInterface(
 				new RiakObject(ByteString.copyFromUtf8(""),
@@ -55,8 +57,9 @@ public class BucketTests {
 		
 		File rootFolder = tempFolder.newFolder();
 		this.rootPath = rootFolder;
+		Configuration config = new Configuration();
 		
-		RiakObjectBucket writeBucket = new RiakObjectBucket(rootFolder, RiakObjectBucket.BucketMode.WRITE, bucketChunkSize, false);
+		RiakObjectBucket writeBucket = new RiakObjectBucket(rootFolder, RiakObjectBucket.BucketMode.WRITE, bucketChunkSize, config);
 		
 		IRiakObject riakObject = ConversionUtilWrapper.convertConcreteToInterface(
 				new RiakObject(ByteString.copyFromUtf8(""),
@@ -74,7 +77,7 @@ public class BucketTests {
 		
 		assertTrue(this.rootPath != null);
 		
-		RiakObjectBucket readBucket = new RiakObjectBucket(this.rootPath, RiakObjectBucket.BucketMode.READ, false);
+		RiakObjectBucket readBucket = new RiakObjectBucket(this.rootPath, RiakObjectBucket.BucketMode.READ, config);
 		
 		int readCount = 0;
 //		@SuppressWarnings("unused")

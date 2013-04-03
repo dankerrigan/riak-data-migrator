@@ -10,8 +10,9 @@ public class Summary {
 	private final List<String> bucketNames = new ArrayList<String>();
 	private final Map<String, Long> countStatistic = new HashMap<String, Long>();
 	private final Map<String, Long> timeStatistic = new HashMap<String, Long>();
+	private final Map<String, Long> sizeStatistic = new HashMap<String, Long>();
 	
-	public void addStatistic(String bucket, Long objectCount, Long time) {
+	public void addStatistic(String bucket, Long objectCount, Long time, Long size) {
 		if (bucket == null || bucket.isEmpty()) {
 			throw new IllegalArgumentException("bucketName cannot be null");
 		}
@@ -24,16 +25,19 @@ public class Summary {
 		this.bucketNames.add(bucket);
 		this.countStatistic.put(bucket, objectCount);
 		this.timeStatistic.put(bucket, time);
+		this.sizeStatistic.put(bucket, size);
 	}
 	
 	public Long[] getBucketStatistic(String bucketName) {
-		Long[] result = new Long[2];
+		Long[] result = new Long[3];
 		
 		Long count = this.countStatistic.get(bucketName);
 		Long time = this.timeStatistic.get(bucketName);
+		Long size = this.sizeStatistic.get(bucketName);
 
 		result[0] = count;
 		result[1] = time;
+		result[2] = size;
 		
 		return result;
 	}
@@ -50,6 +54,14 @@ public class Summary {
 		Long acc = 0l;
 		for (String key : this.bucketNames) {
 			acc += this.timeStatistic.get(key);
+		}
+		return acc;
+	}
+	
+	public Long getTotalSize() {
+		Long acc = 0l;
+		for (String key : this.bucketNames) {
+			acc += this.sizeStatistic.get(key);
 		}
 		return acc;
 	}

@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.junit.Test;
 
+import com.basho.proserv.datamigrator.Configuration;
 import com.basho.riak.client.IRiakObject;
 import com.basho.riak.client.raw.pbc.ConversionUtilWrapper;
 import com.basho.riak.pbc.RiakObject;
@@ -19,6 +20,8 @@ public class ThreadedClientDataWriterTests {
 		Connection connection = new Connection();
 		int TEST_SIZE = 10000;
 		IClientWriterFactory factory = new DummyClientWriterFactory();
+		Configuration config = new Configuration();
+		config.setRiakWorkerCount(8);
 		
 		ByteString data = ByteString.copyFromUtf8("DATA");
 		
@@ -29,7 +32,7 @@ public class ThreadedClientDataWriterTests {
 		
 		ThreadedClientDataWriter writer = new ThreadedClientDataWriter(connection,
 				factory,
-				dummyObjects);
+				dummyObjects, config.getRiakWorkerCount(), config.getQueueSize());
 	
 		int writtenCount = 0;
 		

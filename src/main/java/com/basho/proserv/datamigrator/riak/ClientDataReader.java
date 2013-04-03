@@ -2,21 +2,17 @@ package com.basho.proserv.datamigrator.riak;
 
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.basho.proserv.datamigrator.BucketDumper;
 import com.basho.proserv.datamigrator.io.Key;
 import com.basho.riak.client.IRiakObject;
-import com.basho.riak.client.raw.pbc.ConversionUtilWrapper;
-import com.basho.riak.pbc.RiakObject;
 
 public class ClientDataReader extends AbstractClientDataReader {
-	private final Logger log = LoggerFactory.getLogger(BucketDumper.class);
+	private final Logger log = LoggerFactory.getLogger(ClientDataReader.class);
 	
 	private final Queue<IRiakObject> queuedObjects = new LinkedBlockingQueue<IRiakObject>();
 	private final IClientReader reader;
@@ -33,29 +29,19 @@ public class ClientDataReader extends AbstractClientDataReader {
 
 	
 	@Override
-	public IRiakObject readObject() throws IOException {
+	public IRiakObject readObject() throws IOException, RiakNotFoundException, InterruptedException {
 		if (queuedObjects.isEmpty()) {
-			int retries = 0;
 			Key key = this.keyIterator.next();
-			while (retries < MAX_RETRIES) {
-				try {
-					RiakObject[] objects = this.reader.fetchRiakObject(key.bucket(), key.key());
-					
-					for (RiakObject obj : objects) {
-						IRiakObject riakObject = ConversionUtilWrapper.convertConcreteToInterface(obj);
-						queuedObjects.add(riakObject);
-					}
-					break;
-				} catch (NoSuchElementException e) { // iterator finished
-					return null;
-				} catch (IOException e) {
-					++retries;
-					if (retries > MAX_RETRIES) {
-						log.error("Max retries reached", e);
-						throw e;
-					}
-				}
+			
+			IRiakObject[] objects = this.reader.fetchRiakObject(key.bucket(), key.key());
+			for (int i = 0; i < objects.length; ++i) {
+				queuedObjects.add(objects[i]);
 			}
+			
+//			for (RiakObject obj : objects) {
+//				IRiakObject riakObject = ConversionUtilWrapper.convertConcreteToInterface(obj);
+//				queuedObjects.add(riakObject);
+//			}
 		}
 		return queuedObjects.remove();
 	}

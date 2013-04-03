@@ -17,7 +17,6 @@ import com.google.protobuf.ByteString;
 public class ThreadedRiakObjectWriter implements IRiakObjectWriter {
 	@SuppressWarnings("unused")
 	private final Logger log = LoggerFactory.getLogger(ThreadedRiakObjectReader.class);
-	private static final int DEFAULT_QUEUE_SIZE = 10000;
 	private static final String  STOP_STRING = "STOPSTOPSTOPSTOPSTOP";
 	private static final ByteString STOP_FLAG = ByteString.copyFromUtf8(STOP_STRING);
 	private static final IRiakObject STOP_OBJECT = ConversionUtilWrapper.convertConcreteToInterface(new RiakObject(STOP_FLAG, STOP_FLAG, STOP_FLAG, STOP_FLAG));
@@ -28,9 +27,9 @@ public class ThreadedRiakObjectWriter implements IRiakObjectWriter {
 	
 	private static int threadId = 0;
 	private long count = 0;
-	
-	public ThreadedRiakObjectWriter(File file) {
-		this.queue = new ArrayBlockingQueue<IRiakObject>(DEFAULT_QUEUE_SIZE);
+		
+	public ThreadedRiakObjectWriter(File file, int queueSize) {
+		this.queue = new ArrayBlockingQueue<IRiakObject>(queueSize);
 		this.threadFactory.setNextThreadName(String.format("ThreadedRiakObjectWriter-%d", threadId++));
 		executor.submit(new RiakObjectWriterThread(file, queue));
 	}

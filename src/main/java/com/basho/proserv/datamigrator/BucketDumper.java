@@ -13,6 +13,7 @@ import com.basho.proserv.datamigrator.riak.AbstractClientDataReader;
 import com.basho.proserv.datamigrator.riak.ClientReaderFactory;
 import com.basho.proserv.datamigrator.riak.Connection;
 import com.basho.proserv.datamigrator.riak.RiakBucketProperties;
+import com.basho.proserv.datamigrator.riak.RiakNotFoundException;
 import com.basho.proserv.datamigrator.riak.ThreadedClientDataReader;
 import com.basho.riak.client.IRiakObject;
 import com.basho.riak.client.bucket.BucketProperties;
@@ -23,28 +24,30 @@ public class BucketDumper {
 	public final Summary summary = new Summary();
 	private final Connection connection;
 	private final Connection httpConnection;
+	private final Configuration config;
 	private final File dataRoot;
 	private final boolean verboseStatusOutput;
-	private final int riakWorkerCount;
 	private int errorCount = 0;
 	
 	private long timerStart = System.currentTimeMillis();
 	private long previousCount = 0;
 	
-	public BucketDumper(Connection connection, Connection httpConnection, File dataRoot, 
-			boolean verboseStatusOutput, int riakWorkerCount) {
+	public BucketDumper(Connection connection, Connection httpConnection, Configuration config) {
 		if (connection == null) {
 			throw new IllegalArgumentException("connection cannot be null");
 		}
-		if (dataRoot == null) {
+		if (config == null) {
+			throw new IllegalArgumentException("config cannot be null");
+		}
+		if (config.getFilePath() == null) {
 			throw new IllegalArgumentException("dataRoot cannot be null");
 		}
 		
 		this.connection = connection;
 		this.httpConnection = httpConnection;
-		this.dataRoot = dataRoot;
-		this.verboseStatusOutput = verboseStatusOutput;
-		this.riakWorkerCount = riakWorkerCount;
+		this.config = config;
+		this.dataRoot = config.getFilePath();
+		this.verboseStatusOutput = config.getVerboseStatus();
 	}
 	
 	public long dumpBucketSettings(Set<String> bucketNames) {
@@ -130,13 +133,13 @@ public class BucketDumper {
 			keyCount = this.dumpBucketKeys(bucketName, keyPath);
 		} catch (IOException e){
 			log.error("Error listing keys for bucket " + bucketName, e);
-			this.summary.addStatistic(bucketName, -2l, 0l);
+			this.summary.addStatistic(bucketName, -2l, 0l, 0l);
 			return 0;
 		}
 		
 		if (keysOnly) {
 			String bucketNameKeys= String.format("%s keys", bucketName);
-			this.summary.addStatistic(bucketNameKeys, keyCount, System.currentTimeMillis()-start);
+			this.summary.addStatistic(bucketNameKeys, keyCount, System.currentTimeMillis()-start, 0l);
 			return keyCount;
 		}
 		
@@ -153,7 +156,8 @@ public class BucketDumper {
 			AbstractClientDataReader reader = new ThreadedClientDataReader(connection,
 					new ClientReaderFactory(), 
 					bucketKeys,
-					this.riakWorkerCount);
+					this.config.getRiakWorkerCount(),
+					this.config.getQueueSize());
 			
 			IRiakObject riakObject = null;
 			while((riakObject = reader.readObject()) != null) {
@@ -168,9 +172,16 @@ public class BucketDumper {
 			}
 		} catch (IOException e) {
 			log.error("Riak error dumping objects for bucket: " + bucketName, e);
-			this.summary.addStatistic(bucketName, -1l, 0l);
+			this.summary.addStatistic(bucketName, -1l, 0l, 0l);
 			e.printStackTrace();
 			++errorCount;
+		} catch (RiakNotFoundException e) {
+			log.error("Riak error finding object in bucket: " + bucketName, e);
+			this.summary.addStatistic(bucketName, -1l, 0l, 0l);
+			e.printStackTrace();
+			++errorCount;
+		} catch (InterruptedException e) {
+			//no-op
 		} finally {
 			keyJournal.close();
 			dumpBucket.close();
@@ -178,7 +189,7 @@ public class BucketDumper {
 		
 		long stop = System.currentTimeMillis();
 		
-		this.summary.addStatistic(bucketName, objectCount, stop-start);
+		this.summary.addStatistic(bucketName, objectCount, stop-start, dumpBucket.getBucketSize());
 		
 		if (this.verboseStatusOutput) {
 			this.printStatus(keyCount, objectCount, true);
@@ -244,6 +255,6 @@ public class BucketDumper {
 	private RiakObjectBucket createBucket(String bucketName) {
 		String bucketRootPath = this.createBucketPath(bucketName);
 		File bucketRoot = new File(bucketRootPath);
-		return new RiakObjectBucket(bucketRoot, RiakObjectBucket.BucketMode.WRITE, false);
+		return new RiakObjectBucket(bucketRoot, RiakObjectBucket.BucketMode.WRITE, this.config);
 	}
 }

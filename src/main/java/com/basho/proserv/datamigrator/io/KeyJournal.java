@@ -11,6 +11,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.Iterator;
 
+import com.basho.proserv.datamigrator.Utilities;
 import com.basho.riak.client.IRiakObject;
 import com.basho.riak.pbc.RiakObject;
 
@@ -47,7 +48,7 @@ public class KeyJournal implements Iterable<Key> {
 		if (bucket == null || key == null) {
 			throw new IllegalArgumentException("bucket and key must not be null");
 		}
-		this.writer.write((bucket + "," + key + "\n"));
+		this.writer.write((Utilities.urlEncode(bucket) + "," + Utilities.urlEncode(key) + "\n"));
 	}
 	
 	public void write(RiakObject riakObject) throws IOException {
@@ -71,7 +72,7 @@ public class KeyJournal implements Iterable<Key> {
 		if (comma != -1) {
 			values[0] = line.substring(0, comma);
 			values[1] = line.substring(comma + 1, line.length());
-			return new Key(values[0], values[1]);
+			return new Key(Utilities.urlDecode(values[0]), Utilities.urlDecode(values[1]));
 		}
 		return null;
 	}

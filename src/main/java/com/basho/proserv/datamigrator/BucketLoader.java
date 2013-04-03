@@ -26,9 +26,9 @@ public class BucketLoader {
 	public final Summary summary = new Summary();
 	private final Connection connection;
 	private final Connection httpConnection;
+	private final Configuration config;
 	private final File dataRoot;
 	private final boolean verboseStatusOutput;
-	private final int riakWorkerCount;
 	private final boolean resetVClock;
 	private int errorCount = 0;
 	
@@ -36,21 +36,23 @@ public class BucketLoader {
 	private long previousCount = 0;
 	
 	
-	public BucketLoader(Connection connection, Connection httpConnection, File dataRoot, 
-			boolean verboseStatusOutput, int riakWorkerCount, boolean resetVClock) {
+	public BucketLoader(Connection connection, Connection httpConnection, Configuration config) {
 		if (connection == null) {
 			throw new IllegalArgumentException("connection cannot be null");
 		}
-		if (dataRoot == null) {
+		if (config == null) {
+			throw new IllegalArgumentException("config cannot be null");
+		}
+		if (config.getFilePath() == null) {
 			throw new IllegalArgumentException("dataRoot cannot be null");
 		}
 		
 		this.connection = connection;
 		this.httpConnection = httpConnection;
-		this.dataRoot = dataRoot;
-		this.verboseStatusOutput = verboseStatusOutput;
-		this.riakWorkerCount = riakWorkerCount;
-		this.resetVClock = resetVClock;
+		this.config = config;
+		this.dataRoot = config.getFilePath();
+		this.verboseStatusOutput = config.getVerboseStatus();
+		this.resetVClock = config.getResetVClock();
 	}
 	
 	public long loadBucketSettings(Set<String> bucketNames) {
@@ -107,7 +109,7 @@ public class BucketLoader {
 		
 		RiakObjectBucket dumpBucket = this.createBucket(bucketName);
 		if (!dumpBucket.dataFilesExist()) {
-			this.summary.addStatistic(bucketName, -1l, 0l);
+			this.summary.addStatistic(bucketName, -1l, 0l, 0l);
 			if (this.verboseStatusOutput) {
 				System.out.println(String.format("No data files found for bucket %s", bucketName));
 			}
@@ -119,7 +121,7 @@ public class BucketLoader {
 		
 		AbstractClientDataWriter writer = 
 				new ThreadedClientDataWriter(connection, new ClientWriterFactory(), dumpBucket,
-						this.riakWorkerCount);
+						this.config.getRiakWorkerCount(), this.config.getQueueSize());
 
 		KeyJournal keyJournal = new KeyJournal(
 				KeyJournal.createKeyPathFromPath(new File(this.createBucketPath(bucketName, true) + "/keys" ), true), 
@@ -145,7 +147,7 @@ public class BucketLoader {
 		}
 	
 		long stop = System.currentTimeMillis();
-		summary.addStatistic(bucketName, objectCount, stop - start);
+		summary.addStatistic(bucketName, objectCount, stop - start, dumpBucket.getBucketSize());
 		
 		if (this.verboseStatusOutput) {
 			this.printStatus(keyCount, objectCount, true);
@@ -216,7 +218,7 @@ public class BucketLoader {
 		String fullPathname = this.createBucketPath(bucketName, true);
 		File fullPath = new File(fullPathname);
 		
-		return new RiakObjectBucket(fullPath, RiakObjectBucket.BucketMode.READ, this.resetVClock);
+		return new RiakObjectBucket(fullPath, RiakObjectBucket.BucketMode.READ, this.config);
 	}
 	
 	Set<String> getBucketNames() {

@@ -197,6 +197,11 @@ public class Main {
 			}
 		}
 		
+		if (cmd.hasOption("q")) {
+			int queueSize = Integer.parseInt(cmd.getOptionValue("q"));
+			config.setQueueSize(queueSize);
+		}
+		
 		//Verbose output
 		if (cmd.hasOption("v")) {
 			config.setVerboseStatus(true);
@@ -280,8 +285,7 @@ public class Main {
 			System.exit(-1);
 		}
 		
-		BucketLoader loader = new BucketLoader(connection, httpConnection, config.getFilePath(), 
-				config.getVerboseStatus(), config.getRiakWorkerCount(), config.getResetVClock());
+		BucketLoader loader = new BucketLoader(connection, httpConnection, config);
 		
 //		long start = System.currentTimeMillis();
 		long loadCount = 0;
@@ -325,8 +329,7 @@ public class Main {
 			System.exit(-1);
 		}
 		
-		BucketDumper dumper = new BucketDumper(connection, httpConnection, config.getFilePath(), 
-				config.getVerboseStatus(), config.getRiakWorkerCount());
+		BucketDumper dumper = new BucketDumper(connection, httpConnection, config);
 		
 		
 		boolean keysOnly = (config.getOperation() == Configuration.Operation.ALL_KEYS ||
@@ -362,9 +365,10 @@ public class Main {
 		Map<String, Long[]> bucketStats = summary.getStatistics();
 		System.out.println();
 		System.out.println(title);
-		System.out.println(String.format("%15s%12s%12s%12s","Bucket","Objects","Seconds","Objs/Sec"));
+		System.out.println(String.format("%15s%12s%12s%12s%12s","Bucket","Objects","Seconds","Objs/Sec","Size/KB"));
 		long totalRecords = 0;
 		long totalTime = 0;
+		long totalSize = 0;
 		for (String bucketName : summary.bucketNames()) {
 			Long[] count_time = bucketStats.get(bucketName);
 			String line = null;
@@ -375,27 +379,31 @@ public class Main {
 				} else if (count_time[0] == -3) {
 					errorString = "BUCKET DELETE ERROR";
 				}
-				line = String.format("%15s%12s%12s%12s", 
+				line = String.format("%15s%12s%12s%12s%12s", 
 						bucketName, 
+						errorString,
 						errorString,
 						errorString,
 						errorString);
 			} else {
 				totalRecords += count_time[0];
 				totalTime += count_time[1];
-				line = String.format("%15s%12d%12.1f%12.1f",
+				totalSize += count_time[2];
+				line = String.format("%15s%12d%12.1f%12.1f%12d",
 						bucketName,
 						count_time[0],
 						count_time[1]/1000.0,
-						count_time[0]/(count_time[1]/1000.0));
+						count_time[0]/(count_time[1]/1000.0),
+						count_time[2]/1024);
 			}
 			System.out.println(line);
 		}
-		String line = String.format("%15s%12d%12.1f%12.1f",
-				"Total:",
+		String line = String.format("%15s%12d%12.1f%12.1f%12d",
+				String.format("Total: %d", summary.bucketNames().size()),
 				totalRecords,
 				totalTime/1000.0,
-				totalRecords/(totalTime/1000.0));
+				totalRecords/(totalTime/1000.0),
+				totalSize/1024);
 		System.out.println(line);
 	}
 	
@@ -422,6 +430,7 @@ public class Main {
 		options.addOption("v", false, "Output verbose status output to the command line");
 		options.addOption("k", false, "Dump keys to file.  Cannot be used with l, d");
 		options.addOption("t", false, "Download bucket properties");
+		options.addOption("q", true, "Set the queue Size");
 //		options.addOption("j", true, "Resume based on previuosly written keys");
 		options.addOption("resetvclock", false, "Resets object's VClock prior to being loaded in Riak");
 		options.addOption("riakworkercount", true, "Specify Riak Worker Count");

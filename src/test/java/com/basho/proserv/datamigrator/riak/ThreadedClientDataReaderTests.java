@@ -8,9 +8,9 @@ import java.util.List;
 
 import org.junit.Test;
 
+import com.basho.proserv.datamigrator.Configuration;
 import com.basho.proserv.datamigrator.io.Key;
 import com.basho.riak.client.IRiakObject;
-import com.basho.riak.pbc.RiakObject;
 
 
 public class ThreadedClientDataReaderTests {
@@ -21,6 +21,8 @@ public class ThreadedClientDataReaderTests {
 		
 		Connection connection = new Connection();
 		IClientReaderFactory factory = new DummyClientReaderFactory();
+		Configuration config = new Configuration();
+		config.setRiakWorkerCount(8);
 				
 		List<Key> dummyKeys = new ArrayList<Key>();
 		for (Integer i = 0; i < TEST_SIZE; ++i) {
@@ -31,7 +33,8 @@ public class ThreadedClientDataReaderTests {
 				new ThreadedClientDataReader(connection, 
 						factory, 
 						dummyKeys,
-						8);
+						config.getRiakWorkerCount(),
+						config.getQueueSize());
 		
 		int readCount = 0;
 		

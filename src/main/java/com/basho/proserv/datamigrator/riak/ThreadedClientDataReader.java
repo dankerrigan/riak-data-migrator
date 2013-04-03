@@ -20,17 +20,14 @@ import com.google.protobuf.ByteString;
 
 public class ThreadedClientDataReader extends AbstractClientDataReader {
 	private final Logger log = LoggerFactory.getLogger(ThreadedClientDataReader.class);
-	private static final int MAX_QUEUE_SIZE = 10000;
-	private static final int WORKER_PROC_MULTIPLER = 2;
 
 	private final NamedThreadFactory threadFactory = new NamedThreadFactory();
 	private final ExecutorService executor = Executors.newCachedThreadPool(threadFactory);
 	
 	private final int workerCount;
-	private final ArrayBlockingQueue<Key> keyQueue = 
-			new ArrayBlockingQueue<Key>(MAX_QUEUE_SIZE);
-	private final ArrayBlockingQueue<IRiakObject> returnQueue = 
-			new ArrayBlockingQueue<IRiakObject>(MAX_QUEUE_SIZE);
+	private final ArrayBlockingQueue<Key> keyQueue;
+	private final ArrayBlockingQueue<IRiakObject> returnQueue; 
+			
 	
 	private static String ERROR_STRING = "ERRORERRORERROR";
 	private static ByteString ERROR_FLAG = ByteString.copyFromUtf8(ERROR_STRING);
@@ -47,20 +44,14 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 	private int stopCount = 0;
 	
 	public ThreadedClientDataReader(Connection connection, 
-								   IClientReaderFactory clientReaderFactory,
-								   Iterable<Key> keySource) {
-		this(connection, 
-			 clientReaderFactory, 
-			 keySource, 
-			 Runtime.getRuntime().availableProcessors() * WORKER_PROC_MULTIPLER);
-	}
-	
-	public ThreadedClientDataReader(Connection connection, 
 				IClientReaderFactory clientReaderFactory, 
 				Iterable<Key> keySource,
-				int workerCount) {
+				int workerCount,
+				int queueSize) {
 		super(connection, clientReaderFactory, keySource);
 		this.workerCount = workerCount;
+		this.keyQueue = new ArrayBlockingQueue<Key>(queueSize);
+		this.returnQueue = new ArrayBlockingQueue<IRiakObject>(queueSize);
 		
 		this.run();
 	}
@@ -69,20 +60,20 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 		IRiakObject riakObject = null;
 		
 		try {
-//			riakObject = this.returnQueue.take();
-			while ((riakObject = this.returnQueue.poll()) == null) {
-				log.debug("waiting on return");
-				Thread.sleep(10);
-			}
-			
+			riakObject = this.returnQueue.take();
+//			while ((riakObject = this.returnQueue.poll()) == null) {
+////				log.debug("waiting on return");
+//				Thread.sleep(5);
+//			}
+						
 			//fast exit if not flag
 			if (isStop(riakObject) || isError(riakObject)) {
 				while (!Thread.currentThread().isInterrupted()) {
-
-					
 					if (isStop(riakObject)) {
 						++stopCount;
 						if (this.stopCount == this.workerCount) {
+							this.close();
+
 							riakObject = null;
 							break;
 						}
@@ -99,9 +90,6 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 			//no-op, allow to return 
 		} catch (Throwable t) {
 			t.printStackTrace();
-		}
-		finally {
-			this.close();
 		}
 		
 		return riakObject;
@@ -201,6 +189,7 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 						 Key key = keyQueue.poll();
 						 if (key == null) {
 							 Thread.sleep(10);
+							 log.debug("Waiting for key");
 							 continue;
 						 }
 						 if (key.bucket() == STOP_STRING) {
@@ -208,30 +197,21 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 						 } else if (key.bucket() == ERROR_STRING) {
 							 returnQueue.put(ERROR_OBJECT);
 						 }
-						 int retries = 0;
-						 while (!Thread.currentThread().isInterrupted() && retries < MAX_RETRIES) {
-							 try {
-								 RiakObject[] objects = this.reader.fetchRiakObject(key.bucket(), key.key());
-								 for (int i = 0; i < objects.length; ++i) {
-									 IRiakObject riakObject = ConversionUtilWrapper.convertConcreteToInterface(objects[i]);
-									 while (!Thread.interrupted() && !returnQueue.offer(riakObject)) {
-										 Thread.sleep(10);
-									 }
-								 }
-								 break;
-							 } catch (IOException e) {
-								 ++retries;
-								 log.error(String.format("Fetch fail %d on key %s, retrying", retries, key.key()), e);
-								 Thread.sleep(RETRY_WAIT_TIME);
-								 if (retries > MAX_RETRIES) {
-									 log.error(String.format("Max retries %d reached", MAX_RETRIES), e);
-									 throw e;
-								 }
+						 
+						 IRiakObject[] objects = this.reader.fetchRiakObject(key.bucket(), key.key());
+//						 
+						 if (objects.length == 1) {
+							 returnQueue.put(objects[0]);
+						 } else {
+							 for (int i = 0; i < objects.length; ++i) {
+								 returnQueue.put(objects[i]);
 							 }
 						 }
 					}
 					returnQueue.put(STOP_OBJECT);
 				} catch (IOException e ) {
+					returnQueue.put(ERROR_OBJECT);
+				} catch (RiakNotFoundException e) {
 					returnQueue.put(ERROR_OBJECT);
 				}
 			} catch (InterruptedException e) {

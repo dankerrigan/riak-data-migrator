@@ -2,20 +2,22 @@ package com.basho.proserv.datamigrator.riak;
 
 import java.io.IOException;
 
-import com.basho.riak.pbc.RiakObject;
+import com.basho.riak.client.IRiakObject;
+import com.basho.riak.client.builders.RiakObjectBuilder;
 import com.google.protobuf.ByteString;
 
 public class DummyClientReader implements IClientReader {
 
 	@Override
-	public RiakObject[] fetchRiakObject(String bucket, String key)
+	public IRiakObject[] fetchRiakObject(String bucket, String key)
 			throws IOException {
 		ByteString vclock = ByteString.copyFromUtf8("ReplaceWithGeneratedVClock");
-		RiakObject[] returnVal = new RiakObject[1];
-		returnVal[0] = new RiakObject(vclock,
-				   ByteString.copyFromUtf8(bucket),
-				   ByteString.copyFromUtf8(key),
-				   ByteString.copyFromUtf8(""));
+		IRiakObject[] returnVal = new IRiakObject[1];
+		returnVal[0] = RiakObjectBuilder.newBuilder(bucket, key)
+			.withVClock(vclock.toByteArray())
+			.withValue("")
+			.build();
+		
 		return returnVal;
 	}
 

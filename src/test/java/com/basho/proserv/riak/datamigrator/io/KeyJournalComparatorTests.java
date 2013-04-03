@@ -3,7 +3,6 @@ package com.basho.proserv.riak.datamigrator.io;
 import static org.junit.Assert.*;
 
 import java.io.File;
-import java.io.IOException;
 
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;

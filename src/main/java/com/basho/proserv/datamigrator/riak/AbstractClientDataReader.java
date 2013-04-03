@@ -19,6 +19,6 @@ public abstract class AbstractClientDataReader {
 		this.clientReaderFactory = clientReaderFactory;
 		this.keySource = keySource;
 	}
-	public abstract IRiakObject readObject() throws IOException;
+	public abstract IRiakObject readObject() throws IOException, RiakNotFoundException, InterruptedException;
 //	public abstract void close() throws IOException;
 }

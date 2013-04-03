@@ -16,7 +16,7 @@ import com.basho.proserv.datamigrator.util.NamedThreadFactory;
 
 public class ThreadedClientDataDeleter extends AbstractClientDataDeleter {
 	private final Logger log = LoggerFactory.getLogger(ThreadedClientDataDeleter.class);
-	private static final int MAX_QUEUE_SIZE = 10000;
+	private static final int MAX_QUEUE_SIZE = 1000;
 	private static final int WORKER_PROC_MULTIPLER = 2;
 
 	private final NamedThreadFactory threadFactory = new NamedThreadFactory();

@@ -9,6 +9,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.basho.proserv.datamigrator.Configuration;
 import com.basho.riak.client.IRiakObject;
 
 public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, Iterable<IRiakObject> {
@@ -20,16 +21,18 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 	private final static long DEFAULT_BUCKET_CHUNK_MAX_SIZE = 107374182400l;
 	private final static String DEFAULT_FILE_PREFIX = "";
 	
+	private final Configuration config;
+	
 	private File fileRoot = null;
 	private BucketMode bucketMode = null;
 	private int bucketChunkSize = DEFAULT_BUCKET_CHUNK_COUNT;
 	private long bucketChunkByteSize = DEFAULT_BUCKET_CHUNK_MAX_SIZE;
 	private String filePrefix = DEFAULT_FILE_PREFIX;
-	private boolean resetVClock = false;
 	
 	private Long bucketCount = 0L;
 	private Long currentChunkCount = 0L;
 	private Long currentChunkByteSize = 0L;
+	private Long totalBucketSize = 0L;
 	
 	private IRiakObjectWriter currentRiakObjectWriter = null;
 	private IRiakObjectReader currentRiakObjectReader = null;
@@ -57,11 +60,11 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 		}
 	};
 	
-	public RiakObjectBucket(File fileRoot, BucketMode bucketMode, boolean resetVClock) {
-		this(fileRoot, bucketMode, DEFAULT_BUCKET_CHUNK_COUNT, resetVClock);
+	public RiakObjectBucket(File fileRoot, BucketMode bucketMode, Configuration config) {
+		this(fileRoot, bucketMode, DEFAULT_BUCKET_CHUNK_COUNT, config);
 	}
 	
-	public RiakObjectBucket(File fileRoot, BucketMode bucketMode, int bucketChunkCount, boolean resetVClock) {
+	public RiakObjectBucket(File fileRoot, BucketMode bucketMode, int bucketChunkCount, Configuration config) {
 		if (bucketChunkCount < 1) {
 			throw new IllegalArgumentException("bucketChunkCount must be greater than 0");
 		}
@@ -71,7 +74,7 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 		this.fileRoot = fileRoot;
 		this.bucketMode = bucketMode;
 		this.bucketChunkSize = bucketChunkCount;
-		this.resetVClock = resetVClock;
+		this.config = config;
 		
 		if (bucketMode == BucketMode.READ) {
 			this.populateChunks();
@@ -123,7 +126,9 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 				riakObject = this.currentRiakObjectReader.readRiakObject();
 			} // else returning null
 		}
-		
+		if (riakObject != null) {
+			this.currentChunkByteSize += riakObject.getValue().length;
+		}
 		return riakObject; 
 	}
 		
@@ -151,7 +156,7 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 		String filename = this.fileRoot.getAbsolutePath() + "/" 
 				+ this.filePrefix + this.bucketCount.toString() + ".data";
 		log.debug("Creating new chunk file " + filename);
-		this.currentRiakObjectWriter = new ThreadedRiakObjectWriter(new File(filename));
+		this.currentRiakObjectWriter = new ThreadedRiakObjectWriter(new File(filename), config.getQueueSize());
 		return true;
 	}
 	
@@ -167,12 +172,13 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 		} else {
 			this.closeChunk();
 			log.debug("Opening chunk file " + chunkFile.getAbsolutePath());
-			this.currentRiakObjectReader = new RiakObjectReader(chunkFile, this.resetVClock);
+			this.currentRiakObjectReader = new RiakObjectReader(chunkFile, this.config.getResetVClock());
 		}
 		return true;
 	}
 	
 	private void closeChunk() {
+		this.totalBucketSize += this.currentChunkByteSize;
 		this.currentChunkByteSize = 0l;
 		this.currentChunkCount = 0l;
 		if (this.currentRiakObjectReader != null) {
@@ -187,6 +193,10 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 	
 	public void close() {
 		this.closeChunk();
+	}
+	
+	public long getBucketSize() {
+		return this.totalBucketSize;
 	}
 
 	@Override

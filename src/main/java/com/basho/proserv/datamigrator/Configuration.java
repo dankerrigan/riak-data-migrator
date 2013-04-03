@@ -10,6 +10,9 @@ public class Configuration {
 	private static int RIAK_CLUSTER_CONNECTION_MULTIPLIER = 4;
 	private static int DEFAULT_RIAK_PB_PORT = 8087;
 	private static int DEFAULT_RIAK_HTTP_PORT = 8098;
+	private static int DEFAULT_QUEUE_SIZE = 1000;
+	public static int MAX_RETRY = 3;
+	public static int RETRY_WAIT_MILLIS = 10;
 	public static enum Mode { LOAD, DUMP };
 	public static enum Operation { ALL_BUCKETS, 
 								   BUCKETS, 
@@ -29,6 +32,7 @@ public class Configuration {
 	
 	private int port = DEFAULT_RIAK_PB_PORT;
 	private int httpPort = DEFAULT_RIAK_HTTP_PORT;
+	private int queueSize = DEFAULT_QUEUE_SIZE;
 	
 	private Set<String> bucketNames = new HashSet<String>();
 	
@@ -88,6 +92,13 @@ public class Configuration {
 	}
 	public int getHttpPort() {
 		return this.httpPort;
+	}
+	
+	public void setQueueSize(int queueSize) {
+		this.queueSize = queueSize;
+	}
+	public int getQueueSize() {
+		return this.queueSize;
 	}
 	
 	public void addBucketName(String bucket) {

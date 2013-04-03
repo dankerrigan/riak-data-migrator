@@ -18,7 +18,6 @@ import com.google.protobuf.ByteString;
 public class ThreadedRiakObjectReader implements IRiakObjectReader {
 	@SuppressWarnings("unused")
 	private final Logger log = LoggerFactory.getLogger(ThreadedRiakObjectReader.class);
-	private static final int DEFAULT_QUEUE_SIZE = 10000;
 	private static final String STOP_STRING = "STOPSTOPSTOPSTOP";
 	private static final ByteString STOP_FLAG = ByteString.copyFromUtf8(STOP_STRING);
 	private static IRiakObject STOP_OBJECT = ConversionUtilWrapper.convertConcreteToInterface(
@@ -35,9 +34,9 @@ public class ThreadedRiakObjectReader implements IRiakObjectReader {
 	private long count = 0;
 	
 	@SuppressWarnings("unchecked")
-	public ThreadedRiakObjectReader(File file, boolean resetVClock) {
+	public ThreadedRiakObjectReader(File file, boolean resetVClock, int queueSize) {
 		this.resetVClock = resetVClock;
-		this.queue = new ArrayBlockingQueue<IRiakObject>(DEFAULT_QUEUE_SIZE);
+		this.queue = new ArrayBlockingQueue<IRiakObject>(queueSize);
 		
 		threadFactory.setNextThreadName(String.format("ThreadedRiakObjectReader-%d", threadId++));
 		this.readerFuture = (Future<Runnable>) executor.submit(
