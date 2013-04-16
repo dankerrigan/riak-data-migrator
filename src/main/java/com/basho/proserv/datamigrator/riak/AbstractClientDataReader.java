@@ -1,9 +1,7 @@
 package com.basho.proserv.datamigrator.riak;
 
-import java.io.IOException;
-
+import com.basho.proserv.datamigrator.events.Event;
 import com.basho.proserv.datamigrator.io.Key;
-import com.basho.riak.client.IRiakObject;
 
 public abstract class AbstractClientDataReader {
 	protected final static int MAX_RETRIES = 3;
@@ -19,6 +17,6 @@ public abstract class AbstractClientDataReader {
 		this.clientReaderFactory = clientReaderFactory;
 		this.keySource = keySource;
 	}
-	public abstract IRiakObject readObject() throws IOException, RiakNotFoundException, InterruptedException;
-//	public abstract void close() throws IOException;
+	
+	public abstract Event readObject() throws InterruptedException;
 }

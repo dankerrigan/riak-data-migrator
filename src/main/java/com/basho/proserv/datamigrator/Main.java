@@ -365,10 +365,11 @@ public class Main {
 		Map<String, Long[]> bucketStats = summary.getStatistics();
 		System.out.println();
 		System.out.println(title);
-		System.out.println(String.format("%15s%12s%12s%12s%12s","Bucket","Objects","Seconds","Objs/Sec","Size/KB"));
+		System.out.println(String.format("%15s%12s%12s%12s%12s%10s","Bucket","Objects","Seconds","Objs/Sec","Size/KB","Val. Err."));
 		long totalRecords = 0;
 		long totalTime = 0;
 		long totalSize = 0;
+		long totalValueErrors = 0;
 		for (String bucketName : summary.bucketNames()) {
 			Long[] count_time = bucketStats.get(bucketName);
 			String line = null;
@@ -379,8 +380,9 @@ public class Main {
 				} else if (count_time[0] == -3) {
 					errorString = "BUCKET DELETE ERROR";
 				}
-				line = String.format("%15s%12s%12s%12s%12s", 
+				line = String.format("%15s%12s%12s%12s%12s%10s", 
 						bucketName, 
+						errorString,
 						errorString,
 						errorString,
 						errorString,
@@ -389,21 +391,25 @@ public class Main {
 				totalRecords += count_time[0];
 				totalTime += count_time[1];
 				totalSize += count_time[2];
-				line = String.format("%15s%12d%12.1f%12.1f%12d",
+				totalValueErrors += count_time[3];
+				line = String.format("%15s%12d%12.1f%12.1f%12d%10d",
 						bucketName,
 						count_time[0],
 						count_time[1]/1000.0,
 						count_time[0]/(count_time[1]/1000.0),
-						count_time[2]/1024);
+						count_time[2]/1024,
+						count_time[3]);
 			}
 			System.out.println(line);
 		}
-		String line = String.format("%15s%12d%12.1f%12.1f%12d",
+		String line = String.format("%15s%12d%12.1f%12.1f%12d%10d",
 				String.format("Total: %d", summary.bucketNames().size()),
 				totalRecords,
 				totalTime/1000.0,
 				totalRecords/(totalTime/1000.0),
-				totalSize/1024);
+				totalSize/1024,
+				totalValueErrors
+				);
 		System.out.println(line);
 	}
 	
@@ -431,7 +437,7 @@ public class Main {
 		options.addOption("k", false, "Dump keys to file.  Cannot be used with l, d");
 		options.addOption("t", false, "Download bucket properties");
 		options.addOption("q", true, "Set the queue Size");
-//		options.addOption("j", true, "Resume based on previuosly written keys");
+//		options.addOption("j", true, "Resume based on previously written keys");
 		options.addOption("resetvclock", false, "Resets object's VClock prior to being loaded in Riak");
 		options.addOption("riakworkercount", true, "Specify Riak Worker Count");
 		options.addOption("maxriakconnections", true, "Specify the max number of connections maintained in the Riak Connection Pool");

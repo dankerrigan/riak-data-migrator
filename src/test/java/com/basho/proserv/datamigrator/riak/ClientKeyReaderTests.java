@@ -7,8 +7,8 @@ import java.util.List;
 
 import org.junit.Test;
 
+import com.basho.proserv.datamigrator.events.Event;
 import com.basho.proserv.datamigrator.io.Key;
-import com.basho.riak.client.IRiakObject;
 
 public class ClientKeyReaderTests {
 
@@ -32,8 +32,8 @@ public class ClientKeyReaderTests {
 		int readCount = 0;
 		
 		@SuppressWarnings("unused")
-		IRiakObject object = null;
-		while ((object = reader.readObject()) != null) {
+		Event event = null;
+		while (!(event = reader.readObject()).isNullEvent()) {
 			++readCount;
 		}
 		

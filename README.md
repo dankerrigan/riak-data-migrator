@@ -46,13 +46,13 @@ To transfer data from one Riak cluster to another:
 Downloading:
 ------------------------
 You can download the ready to run jar file at:
-http://ps-tools.data.riakcs.net:8080/riak-data-migrator-0.2.1-bin.tar.gz
+http://ps-tools.data.riakcs.net:8080/riak-data-migrator-0.2.2-bin.tar.gz
 
 After downloading, unzip/untar it, and it's ready to run from its directory.
 ```bash
-tar -xvzf riak-data-migrator-0.2.1-bin.tar.gz
-cd riak-data-migrator-0.2.1
-java -jar riak-data-migrator-0.2.1.jar [options]
+tar -xvzf riak-data-migrator-0.2.2-bin.tar.gz
+cd riak-data-migrator-0.2.2
+java -jar riak-data-migrator-0.2.2.jar [options]
 ```
 
 Building from source:
@@ -67,12 +67,12 @@ mvn package
 ```
 
     The compiled .jar file is located in the ```target/``` directory.
-    The usable binary file is ```riak-data-migrator-0.2.1-bin.tar.gz```
+    The usable binary file is ```riak-data-migrator-0.2.2-bin.tar.gz```
 
 Usage:
 ------------------------
 Usage:  
-```java -jar riak-data-migrator-0.2.1.jar [options]```
+```java -jar riak-data-migrator-0.2.2.jar [options]```
 
 Options:
 ```
@@ -117,22 +117,22 @@ Concurrency and Misc Settings
 Examples:
 -------------------------
 Dump (the contents of) all buckets from Riak:  
-```java -jar riak-data-migrator-0.2.1.jar -d -r /var/riak_export -a -h 127.0.0.1 -p 8087 -H 8098```
+```java -jar riak-data-migrator-0.2.2.jar -d -r /var/riak_export -a -h 127.0.0.1 -p 8087 -H 8098```
 
 Load all buckets previously dumped back into Riak:  
-```java -jar riak-data-migrator-0.2.1.jar -l -r /var/riak-export -a -h 127.0.0.1 -p 8087 -H 8098```
+```java -jar riak-data-migrator-0.2.2.jar -l -r /var/riak-export -a -h 127.0.0.1 -p 8087 -H 8098```
 
 Dump (the contents of) buckets listed in a line delimited file from a Riak cluster:  
 <pre>
-java -jar riak-data-migrator-0.2.1.jar -d -f /home/riakadmin/buckets_to_export.txt -r \  
+java -jar riak-data-migrator-0.2.2.jar -d -f /home/riakadmin/buckets_to_export.txt -r \  
 /var/riak-export -c /home/riakadmin/riak_hosts.txt -p 8087 -H 8098
 </pre>
 
 Export only the bucket settings from a bucket named "Flights":  
-```java -jar riak-data-migrator-0.2.1.jar -d -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098```
+```java -jar riak-data-migrator-0.2.2.jar -d -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098```
 
 Load bucket settings for a bucket named "Flights":  
-```java -jar riak-data-migrator-0.2.1.jar -l -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098```
+```java -jar riak-data-migrator-0.2.2.jar -l -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098```
 
 Caveats:
 ------------------------

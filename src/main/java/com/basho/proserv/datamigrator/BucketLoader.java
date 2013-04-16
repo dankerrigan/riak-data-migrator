@@ -109,7 +109,7 @@ public class BucketLoader {
 		
 		RiakObjectBucket dumpBucket = this.createBucket(bucketName);
 		if (!dumpBucket.dataFilesExist()) {
-			this.summary.addStatistic(bucketName, -1l, 0l, 0l);
+			this.summary.addStatistic(bucketName, -1l, 0l, 0l, 0l);
 			if (this.verboseStatusOutput) {
 				System.out.println(String.format("No data files found for bucket %s", bucketName));
 			}
@@ -147,7 +147,7 @@ public class BucketLoader {
 		}
 	
 		long stop = System.currentTimeMillis();
-		summary.addStatistic(bucketName, objectCount, stop - start, dumpBucket.getBucketSize());
+		summary.addStatistic(bucketName, objectCount, stop - start, dumpBucket.getBucketSize(), 0l);
 		
 		if (this.verboseStatusOutput) {
 			this.printStatus(keyCount, objectCount, true);
@@ -210,7 +210,7 @@ public class BucketLoader {
 			System.out.flush();
 			
 			this.previousCount = objectCount;
-			timerStart = System.currentTimeMillis();
+			this.timerStart = System.currentTimeMillis();
 		}
 	}
 	

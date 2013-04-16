@@ -6,7 +6,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.basho.proserv.datamigrator.Configuration;
-import com.basho.riak.client.IRiakObject;
+import com.basho.proserv.datamigrator.events.Event;
+import com.basho.proserv.datamigrator.events.IoErrorEvent;
+import com.basho.proserv.datamigrator.events.RiakObjectEvent;
+import com.basho.proserv.datamigrator.events.ValueErrorEvent;
+import com.basho.proserv.datamigrator.io.Key;
 import com.basho.riak.client.raw.RiakResponse;
 
 public class ClientReader implements IClientReader {
@@ -18,23 +22,17 @@ public class ClientReader implements IClientReader {
 	}
 
 	@Override
-	public IRiakObject[] fetchRiakObject(String bucket, String key) 
-			throws IOException, RiakNotFoundException, InterruptedException {
+	public Event fetchRiakObject(String bucket, String key) 
+			throws InterruptedException {
 		return this.fetchRiakObject(bucket, key, 0);
 	}
 	
-//	@Override
-//	public IRiakObject[] fetchRiakObject(String bucket, String key) 
-//			throws IOException, RiakNotFoundException, InterruptedException {
-//		return this.connection.riakClient.fetch(bucket, key).getRiakObjects();
-//	}
-	
-	public IRiakObject[] fetchRiakObject(String bucket, String key, int retryCount) 
-			throws IOException, RiakNotFoundException, InterruptedException {
+	public Event fetchRiakObject(String bucket, String key, int retryCount) 
+			throws InterruptedException {
 		try {
 			RiakResponse resp = this.connection.riakClient.fetch(bucket, key);
 			if (resp.hasValue()) {
-				return resp.getRiakObjects();
+				return new RiakObjectEvent(resp.getRiakObjects());
 			} else {
 				throw new RiakNotFoundException(bucket, key);
 			}
@@ -44,8 +42,8 @@ public class ClientReader implements IClientReader {
 				Thread.sleep(Configuration.RETRY_WAIT_MILLIS);
 				return fetchRiakObject(bucket, key, retryCount + 1);
 			} else {
-				log.error("Max retries reached", e);
-				throw e;
+				log.error("Max retries %d reached on key %s / %s", Configuration.MAX_RETRY, bucket, key, e);
+				return new IoErrorEvent(new Key(bucket, key), e);
 			}
 		} catch (RiakNotFoundException e) {
 			if (retryCount < Configuration.MAX_RETRY) {
@@ -53,8 +51,8 @@ public class ClientReader implements IClientReader {
 				Thread.sleep(Configuration.RETRY_WAIT_MILLIS);
 				return fetchRiakObject(bucket, key, retryCount + 1);
 			} else {
-				log.error("Max retries reached", e);
-				throw e;
+				log.error("Max retries %d reached on key %s / %s", Configuration.MAX_RETRY, bucket, key, e);
+				return new ValueErrorEvent(new Key(bucket, key));
 			}
 		}
 	}

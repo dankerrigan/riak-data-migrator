@@ -1,10 +1,8 @@
 package com.basho.proserv.datamigrator.riak;
 
-import java.io.IOException;
-
-import com.basho.riak.client.IRiakObject;
+import com.basho.proserv.datamigrator.events.Event;
 
 public interface IClientReader {
-	public IRiakObject[] fetchRiakObject(String bucket, String key) 
-			throws IOException, RiakNotFoundException, InterruptedException;
+	public Event fetchRiakObject(String bucket, String key) 
+			throws InterruptedException;
 }

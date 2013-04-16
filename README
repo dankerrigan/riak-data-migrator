@@ -5,7 +5,7 @@ one or more buckets from Riak to a local disk and then, likewise, load one
 or more buckets that have been stored to disk back into Riak.
 
 Usage:
-java -jar riak-data-migrator-0.2.1.jar [options]
+java -jar riak-data-migrator-0.2.2.jar [options]
 
 Options:
 -l Set to Load buckets. Cannot be used with d or k.
@@ -37,22 +37,22 @@ Options:
 	
 Examples:
 Dump all buckets from Riak
-java -jar riak-data-migrator-0.2.1.jar -d -r /var/riak_export -a -h 127.0.0.1 -p 8087 \
+java -jar riak-data-migrator-0.2.2.jar -d -r /var/riak_export -a -h 127.0.0.1 -p 8087 \
 -H 8098
 	
 Load all buckets previously dumped back into Riak
-java -jar riak-data-migrator-0.2.1jar -l -r /var/riak-export -a -h 127.0.0.1 -p 8087 \
+java -jar riak-data-migrator-0.2.2jar -l -r /var/riak-export -a -h 127.0.0.1 -p 8087 \
 -H 8098
 
 
 Dump bucket settings from a bucket named "Flights":  
-java -jar riak-data-migrator-0.2.1.jar -d -t -r /var/riak-export -b Flights -h 127.0.0.1 \
+java -jar riak-data-migrator-0.2.2.jar -d -t -r /var/riak-export -b Flights -h 127.0.0.1 \
 -p 8087 -H 8098
 
 Load bucket settings for a bucket named "Flights":  
-java -jar riak-data-migrator-0.2.1.jar -l -t -r /var/riak-export -b Flights -h 127.0.0.1 \
+java -jar riak-data-migrator-0.2.2.jar -l -t -r /var/riak-export -b Flights -h 127.0.0.1 \
 -p 8087 -H 8098
 	
 Dump buckets listed in a line delimited file from a Riak cluster
-java -jar riak-data-migrator-0.2.1.jar -d -f /home/riakadmin/buckets_to_export.txt -r \
+java -jar riak-data-migrator-0.2.2.jar -d -f /home/riakadmin/buckets_to_export.txt -r \
 /var/riak-export -c /home/riakadmin/riak_hosts.txt -p 8087 -H 8098

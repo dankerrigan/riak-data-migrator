@@ -11,12 +11,9 @@ import java.util.concurrent.ArrayBlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.basho.proserv.datamigrator.events.Event;
 import com.basho.proserv.datamigrator.io.Key;
 import com.basho.proserv.datamigrator.util.NamedThreadFactory;
-import com.basho.riak.client.IRiakObject;
-import com.basho.riak.client.raw.pbc.ConversionUtilWrapper;
-import com.basho.riak.pbc.RiakObject;
-import com.google.protobuf.ByteString;
 
 public class ThreadedClientDataReader extends AbstractClientDataReader {
 	private final Logger log = LoggerFactory.getLogger(ThreadedClientDataReader.class);
@@ -26,19 +23,15 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 	
 	private final int workerCount;
 	private final ArrayBlockingQueue<Key> keyQueue;
-	private final ArrayBlockingQueue<IRiakObject> returnQueue; 
+	private final ArrayBlockingQueue<Event> returnQueue; 
 			
 	
 	private static String ERROR_STRING = "ERRORERRORERROR";
-	private static ByteString ERROR_FLAG = ByteString.copyFromUtf8(ERROR_STRING);
 	private static Key ERROR_KEY = new Key(ERROR_STRING, ERROR_STRING);
-	private static IRiakObject ERROR_OBJECT = ConversionUtilWrapper.convertConcreteToInterface(
-			new RiakObject(ERROR_FLAG, ERROR_FLAG, ERROR_FLAG, ERROR_FLAG));
+	
 	private static String STOP_STRING = "STOPSTOPSTOPSTOPSTOP";
-	private static ByteString STOP_FLAG = ByteString.copyFromUtf8(STOP_STRING);
 	private static Key STOP_KEY = new Key(STOP_STRING, STOP_STRING);
-	private static IRiakObject STOP_OBJECT = ConversionUtilWrapper.convertConcreteToInterface(
-			new RiakObject(STOP_FLAG, STOP_FLAG, STOP_FLAG, STOP_FLAG));
+	
 	
 	private List<Future<Runnable>> threads = new ArrayList<Future<Runnable>>();
 	private int stopCount = 0;
@@ -51,39 +44,38 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 		super(connection, clientReaderFactory, keySource);
 		this.workerCount = workerCount;
 		this.keyQueue = new ArrayBlockingQueue<Key>(queueSize);
-		this.returnQueue = new ArrayBlockingQueue<IRiakObject>(queueSize);
+		this.returnQueue = new ArrayBlockingQueue<Event>(queueSize);
 		
 		this.run();
 	}
 	
-	public IRiakObject readObject() throws IOException {
-		IRiakObject riakObject = null;
+	public Event readObject() {
+		Event event = Event.NULL;
 		
 		try {
-			riakObject = this.returnQueue.take();
-//			while ((riakObject = this.returnQueue.poll()) == null) {
-////				log.debug("waiting on return");
-//				Thread.sleep(5);
-//			}
+			while ((event = this.returnQueue.poll()) == null) {
+				Thread.sleep(RETRY_WAIT_TIME);
+			}
+//			event = this.returnQueue.take();
 						
 			//fast exit if not flag
-			if (isStop(riakObject) || isError(riakObject)) {
+			if (event.isNullEvent() || event.isIoErrorEvent()) {
 				while (!Thread.currentThread().isInterrupted()) {
-					if (isStop(riakObject)) {
+					if (event.isNullEvent()) {
 						++stopCount;
 						if (this.stopCount == this.workerCount) {
 							this.close();
 
-							riakObject = null;
 							break;
 						}
-					} else if (isError(riakObject)) {
+					} else if (event.isIoErrorEvent()) {
 						this.interruptWorkers();
-						throw new IOException("Error reading Riak Object, shutting down bucket load process");
+						throw new IOException("Error reading Riak Object, shutting down bucket load process", 
+								event.asIoErrorEvent().ioException());
 					} else { 
 						break;
 					}
-					riakObject = this.returnQueue.take();
+					event = this.returnQueue.take();
 				}
 			}
 		} catch (InterruptedException e) {
@@ -92,15 +84,7 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 			t.printStackTrace();
 		}
 		
-		return riakObject;
-	}
-	
-	private static boolean isStop(IRiakObject riakObject) {
-		return riakObject.getBucket().compareTo(STOP_STRING) == 0;
-	}
-	
-	private static boolean isError(IRiakObject riakObject) {
-		return riakObject.getBucket().compareTo(ERROR_STRING) == 0;
+		return event;
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -171,11 +155,11 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 
 		private final IClientReader reader;
 		private final ArrayBlockingQueue<Key> keyQueue;
-		private final ArrayBlockingQueue<IRiakObject> returnQueue;
+		private final ArrayBlockingQueue<Event> returnQueue;
 		
 		public ClientReaderThread(IClientReader reader,
 				ArrayBlockingQueue<Key> keyQueue,
-				ArrayBlockingQueue<IRiakObject> returnQueue) {
+				ArrayBlockingQueue<Event> returnQueue) {
 			this.reader = reader;
 			this.keyQueue = keyQueue;
 			this.returnQueue = returnQueue;
@@ -184,36 +168,22 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 		@Override
 		public void run() {
 			try {
-				try {
-					while (!Thread.currentThread().isInterrupted()) {
-						 Key key = keyQueue.poll();
-						 if (key == null) {
-							 Thread.sleep(10);
-							 log.debug("Waiting for key");
-							 continue;
-						 }
-						 if (key.bucket() == STOP_STRING) {
-							 break;
-						 } else if (key.bucket() == ERROR_STRING) {
-							 returnQueue.put(ERROR_OBJECT);
-						 }
-						 
-						 IRiakObject[] objects = this.reader.fetchRiakObject(key.bucket(), key.key());
-//						 
-						 if (objects.length == 1) {
-							 returnQueue.put(objects[0]);
-						 } else {
-							 for (int i = 0; i < objects.length; ++i) {
-								 returnQueue.put(objects[i]);
-							 }
-						 }
-					}
-					returnQueue.put(STOP_OBJECT);
-				} catch (IOException e ) {
-					returnQueue.put(ERROR_OBJECT);
-				} catch (RiakNotFoundException e) {
-					returnQueue.put(ERROR_OBJECT);
+				while (!Thread.currentThread().isInterrupted()) {
+					 Key key = keyQueue.poll();
+					 if (key == null) {
+						 Thread.sleep(10);
+						 log.debug("Waiting for key");
+						 continue;
+					 }
+					 if (key.bucket() == STOP_STRING) {
+						 break;
+					 }
+					 
+					 Event event = this.reader.fetchRiakObject(key.bucket(), key.key());
+
+					 returnQueue.put(event);
 				}
+				returnQueue.put(Event.NULL); 
 			} catch (InterruptedException e) {
 				// no-op, allow to exit
 			}

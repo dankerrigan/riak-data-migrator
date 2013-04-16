@@ -1,20 +1,17 @@
 package com.basho.proserv.datamigrator.riak;
 
-import java.io.IOException;
 import java.util.Iterator;
-import java.util.Queue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.NoSuchElementException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.basho.proserv.datamigrator.events.Event;
 import com.basho.proserv.datamigrator.io.Key;
-import com.basho.riak.client.IRiakObject;
 
 public class ClientDataReader extends AbstractClientDataReader {
 	private final Logger log = LoggerFactory.getLogger(ClientDataReader.class);
 	
-	private final Queue<IRiakObject> queuedObjects = new LinkedBlockingQueue<IRiakObject>();
 	private final IClientReader reader;
 	private final Iterator<Key> keyIterator;
 	
@@ -29,21 +26,17 @@ public class ClientDataReader extends AbstractClientDataReader {
 
 	
 	@Override
-	public IRiakObject readObject() throws IOException, RiakNotFoundException, InterruptedException {
-		if (queuedObjects.isEmpty()) {
+	public Event readObject() throws InterruptedException {
+		Event event = Event.NULL;
+		try {
 			Key key = this.keyIterator.next();
 			
-			IRiakObject[] objects = this.reader.fetchRiakObject(key.bucket(), key.key());
-			for (int i = 0; i < objects.length; ++i) {
-				queuedObjects.add(objects[i]);
-			}
-			
-//			for (RiakObject obj : objects) {
-//				IRiakObject riakObject = ConversionUtilWrapper.convertConcreteToInterface(obj);
-//				queuedObjects.add(riakObject);
-//			}
+			event = this.reader.fetchRiakObject(key.bucket(), key.key());
+		} catch (NoSuchElementException e) {
+			//no-op
 		}
-		return queuedObjects.remove();
+
+		return event;
 	}
 	
 }

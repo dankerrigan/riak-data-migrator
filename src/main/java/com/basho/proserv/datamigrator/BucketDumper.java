@@ -7,6 +7,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.basho.proserv.datamigrator.events.Event;
 import com.basho.proserv.datamigrator.io.KeyJournal;
 import com.basho.proserv.datamigrator.io.RiakObjectBucket;
 import com.basho.proserv.datamigrator.riak.AbstractClientDataReader;
@@ -120,6 +121,7 @@ public class BucketDumper {
 		}
 		
 		long objectCount = 0;
+		long valueErrorCount = 0;
 		this.previousCount = 0;
 
 		RiakObjectBucket dumpBucket = this.createBucket(bucketName);
@@ -133,13 +135,13 @@ public class BucketDumper {
 			keyCount = this.dumpBucketKeys(bucketName, keyPath);
 		} catch (IOException e){
 			log.error("Error listing keys for bucket " + bucketName, e);
-			this.summary.addStatistic(bucketName, -2l, 0l, 0l);
+			this.summary.addStatistic(bucketName, -2l, 0l, 0l, 0l);
 			return 0;
 		}
 		
 		if (keysOnly) {
 			String bucketNameKeys= String.format("%s keys", bucketName);
-			this.summary.addStatistic(bucketNameKeys, keyCount, System.currentTimeMillis()-start, 0l);
+			this.summary.addStatistic(bucketNameKeys, keyCount, System.currentTimeMillis()-start, 0l, 0l);
 			return keyCount;
 		}
 		
@@ -158,13 +160,21 @@ public class BucketDumper {
 					bucketKeys,
 					this.config.getRiakWorkerCount(),
 					this.config.getQueueSize());
-			
-			IRiakObject riakObject = null;
-			while((riakObject = reader.readObject()) != null) {
-				dumpBucket.writeRiakObject(riakObject);
-				keyJournal.write(riakObject);
-				
-				++objectCount;
+
+			Event event = null;
+			while (!(event = reader.readObject()).isNullEvent()) {
+				if (event.isRiakObjectEvent()) {
+					IRiakObject objects[] = event.asRiakObjectEvent().riakObjects();
+					for (int i = 0; i < objects.length; ++i) {
+						dumpBucket.writeRiakObject(objects[i]);
+						++objectCount;
+					}
+					keyJournal.write(objects[0]);
+				} else if (event.isValueErrorEvent()) { // Count not-founds
+					++valueErrorCount;
+				} else if (event.isIoErrorEvent()) { // Exit on IOException retry reached
+					throw new IOException(event.asIoErrorEvent().ioException());
+				}
 
 				if (this.verboseStatusOutput) {
 					this.printStatus(keyCount, objectCount, false);
@@ -172,12 +182,7 @@ public class BucketDumper {
 			}
 		} catch (IOException e) {
 			log.error("Riak error dumping objects for bucket: " + bucketName, e);
-			this.summary.addStatistic(bucketName, -1l, 0l, 0l);
-			e.printStackTrace();
-			++errorCount;
-		} catch (RiakNotFoundException e) {
-			log.error("Riak error finding object in bucket: " + bucketName, e);
-			this.summary.addStatistic(bucketName, -1l, 0l, 0l);
+			this.summary.addStatistic(bucketName, -1l, 0l, 0l, valueErrorCount);
 			e.printStackTrace();
 			++errorCount;
 		} catch (InterruptedException e) {
@@ -189,7 +194,11 @@ public class BucketDumper {
 		
 		long stop = System.currentTimeMillis();
 		
-		this.summary.addStatistic(bucketName, objectCount, stop-start, dumpBucket.getBucketSize());
+		this.summary.addStatistic(bucketName, 
+								  objectCount, 
+								  stop-start, 
+								  dumpBucket.getBucketSize(), 
+								  valueErrorCount);
 		
 		if (this.verboseStatusOutput) {
 			this.printStatus(keyCount, objectCount, true);

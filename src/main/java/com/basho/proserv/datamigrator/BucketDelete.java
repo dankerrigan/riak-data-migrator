@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 import com.basho.proserv.datamigrator.io.Key;
 import com.basho.proserv.datamigrator.io.KeyJournal;
 import com.basho.proserv.datamigrator.riak.AbstractClientDataDeleter;
-import com.basho.proserv.datamigrator.riak.ClientDataDeleter;
 import com.basho.proserv.datamigrator.riak.Connection;
 import com.basho.proserv.datamigrator.riak.ThreadedClientDataDeleter;
 
@@ -67,7 +66,7 @@ public class BucketDelete {
 			keyCount = dumpBucketKeys(bucketName, keyPath);
 		} catch (IOException e) {
 			log.error("Error listing keys", e);
-			this.summary.addStatistic(bucketName, -2l, 0l, 0l);
+			this.summary.addStatistic(bucketName, -2l, 0l, 0l, 0l);
 			return -2;
 		}
 		
@@ -86,12 +85,12 @@ public class BucketDelete {
 			}
 		} catch (IOException e) {
 			log.error("Error deleting keys");
-			this.summary.addStatistic(bucketName, -3l, 0l, 0l);
+			this.summary.addStatistic(bucketName, -3l, 0l, 0l, 0l);
 			return -3;
 		}
 		
 		long stop = System.currentTimeMillis();
-		this.summary.addStatistic(bucketName, objectCount, stop-start, 0l);
+		this.summary.addStatistic(bucketName, objectCount, stop-start, 0l, 0l);
 		
 		if (this.verboseOutput) {
 			this.printStatus(keyCount, objectCount, true);

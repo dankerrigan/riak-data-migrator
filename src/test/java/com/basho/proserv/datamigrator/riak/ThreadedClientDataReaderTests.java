@@ -9,8 +9,8 @@ import java.util.List;
 import org.junit.Test;
 
 import com.basho.proserv.datamigrator.Configuration;
+import com.basho.proserv.datamigrator.events.Event;
 import com.basho.proserv.datamigrator.io.Key;
-import com.basho.riak.client.IRiakObject;
 
 
 public class ThreadedClientDataReaderTests {
@@ -39,8 +39,8 @@ public class ThreadedClientDataReaderTests {
 		int readCount = 0;
 		
 		@SuppressWarnings("unused")
-		IRiakObject object = null;
-		while ((object = reader.readObject()) != null) {
+		Event event = Event.NULL;
+		while (!(event = reader.readObject()).isNullEvent()) {
 			++readCount;
 			if (readCount == TEST_SIZE) {
 				System.out.println("Test should be finished");
