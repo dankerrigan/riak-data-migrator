@@ -1,8 +1,8 @@
 package com.basho.proserv.datamigrator.io;
 
-import com.basho.riak.client.IRiakObject;
+import com.basho.proserv.datamigrator.events.RiakObjectEvent;
 
 public interface IRiakObjectReader {
-	public IRiakObject readRiakObject();
+	public RiakObjectEvent readRiakObject();
 	public void close();
 }

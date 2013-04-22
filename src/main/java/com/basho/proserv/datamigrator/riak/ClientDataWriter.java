@@ -1,22 +1,23 @@
 package com.basho.proserv.datamigrator.riak;
 
-import java.io.IOException;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.basho.riak.client.IRiakObject;
+import com.basho.proserv.datamigrator.events.Event;
 
 public class ClientDataWriter extends AbstractClientDataWriter {
+	@SuppressWarnings("unused")
 	private final Logger log = LoggerFactory.getLogger(ClientDataWriter.class);
 
-	private final Iterator<IRiakObject> objectIterator;
+	private final Iterator<Event> objectIterator;
 	private final IClientWriter clientWriter;
 	
 	public ClientDataWriter(Connection connection,
 			IClientWriterFactory clientWriterFactory,
-			Iterable<IRiakObject> objectSource) {
+			Iterable<Event> objectSource) {
 		super(connection, clientWriterFactory, objectSource);
 		
 		this.objectIterator = this.objectSource.iterator();
@@ -24,22 +25,19 @@ public class ClientDataWriter extends AbstractClientDataWriter {
 	}
 
 	@Override
-	public IRiakObject writeObject() throws IOException {
-		IRiakObject object = this.objectIterator.next();
-		int retries = 0;
-		while (!Thread.interrupted() && retries < MAX_RETRIES) {
-			try {
-				this.clientWriter.storeRiakObject(object);
-				break;
-			} catch (IOException e) {
-				++retries;
-				if (retries > MAX_RETRIES) {
-					log.error("Max retries reached", e);
-					throw e;
-				}
+	public Event writeObject() {
+		try {
+			Event event = this.objectIterator.next();
+			
+			if (!event.isRiakObjectEvent()) {
+				return event;
 			}
+			
+			return this.clientWriter.storeRiakObject(event.asRiakObjectEvent());
+			
+		} catch (NoSuchElementException e) {
+			return Event.NULL;
 		}
-		return object;
 	}
 
 

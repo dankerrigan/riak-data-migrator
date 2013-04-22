@@ -8,7 +8,8 @@ import java.util.List;
 import org.junit.Test;
 
 import com.basho.proserv.datamigrator.Configuration;
-import com.basho.riak.client.IRiakObject;
+import com.basho.proserv.datamigrator.events.Event;
+import com.basho.proserv.datamigrator.events.RiakObjectEvent;
 import com.basho.riak.client.raw.pbc.ConversionUtilWrapper;
 import com.basho.riak.pbc.RiakObject;
 import com.google.protobuf.ByteString;
@@ -25,9 +26,10 @@ public class ThreadedClientDataWriterTests {
 		
 		ByteString data = ByteString.copyFromUtf8("DATA");
 		
-		List<IRiakObject> dummyObjects = new ArrayList<IRiakObject>();
+		List<Event> dummyObjects = new ArrayList<Event>();
 		for (Integer i = 0; i < TEST_SIZE; ++i) {
-			dummyObjects.add(ConversionUtilWrapper.convertConcreteToInterface(new RiakObject(data, data, data, data)));
+			dummyObjects.add(new RiakObjectEvent(
+					ConversionUtilWrapper.convertConcreteToInterface(new RiakObject(data, data, data, data))));
 		}
 		
 		ThreadedClientDataWriter writer = new ThreadedClientDataWriter(connection,
@@ -37,8 +39,8 @@ public class ThreadedClientDataWriterTests {
 		int writtenCount = 0;
 		
 		@SuppressWarnings("unused")
-		IRiakObject riakObject = null;
-		while ((riakObject = writer.writeObject()) != null) {
+		Event event = Event.NULL;
+		while (!(event = writer.writeObject()).isNullEvent()) {
 			++writtenCount;
 		}
 		

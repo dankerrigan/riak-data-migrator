@@ -4,14 +4,14 @@ import java.io.File;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import com.basho.riak.client.IRiakObject;
+import com.basho.proserv.datamigrator.events.RiakObjectEvent;
 
 public class BatchingRiakObjectWriter extends RiakObjectWriter implements IRiakObjectWriter{
 
 	private final static int DEFAULT_QUEUE_SIZE = 10000;
 	private final int batchSize;
 	
-	private final Queue<IRiakObject> queue = new LinkedBlockingQueue<IRiakObject>();
+	private final Queue<RiakObjectEvent> queue = new LinkedBlockingQueue<RiakObjectEvent>();
 	
 	public BatchingRiakObjectWriter(File file) {
 		this(file, DEFAULT_QUEUE_SIZE);
@@ -23,7 +23,7 @@ public class BatchingRiakObjectWriter extends RiakObjectWriter implements IRiakO
 	}
 	
 	@Override
-	public boolean writeRiakObject(IRiakObject riakObject) {
+	public boolean writeRiakObject(RiakObjectEvent riakObject) {
 		queue.add(riakObject);
 		if (queue.size() >= this.batchSize) {
 			flush();

@@ -8,6 +8,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.basho.proserv.datamigrator.events.Event;
 import com.basho.proserv.datamigrator.io.Key;
 import com.basho.proserv.datamigrator.io.KeyJournal;
 import com.basho.proserv.datamigrator.io.RiakObjectBucket;
@@ -16,7 +17,6 @@ import com.basho.proserv.datamigrator.riak.ClientWriterFactory;
 import com.basho.proserv.datamigrator.riak.Connection;
 import com.basho.proserv.datamigrator.riak.RiakBucketProperties;
 import com.basho.proserv.datamigrator.riak.ThreadedClientDataWriter;
-import com.basho.riak.client.IRiakObject;
 import com.basho.riak.client.bucket.BucketProperties;
 
 
@@ -29,7 +29,6 @@ public class BucketLoader {
 	private final Configuration config;
 	private final File dataRoot;
 	private final boolean verboseStatusOutput;
-	private final boolean resetVClock;
 	private int errorCount = 0;
 	
 	private long timerStart = System.currentTimeMillis();
@@ -52,7 +51,6 @@ public class BucketLoader {
 		this.config = config;
 		this.dataRoot = config.getFilePath();
 		this.verboseStatusOutput = config.getVerboseStatus();
-		this.resetVClock = config.getResetVClock();
 	}
 	
 	public long loadBucketSettings(Set<String> bucketNames) {
@@ -106,6 +104,7 @@ public class BucketLoader {
 		
 		long objectCount = 0;
 		this.previousCount = 0;
+		boolean error = false;
 		
 		RiakObjectBucket dumpBucket = this.createBucket(bucketName);
 		if (!dumpBucket.dataFilesExist()) {
@@ -119,8 +118,11 @@ public class BucketLoader {
 		File keyPath = new File(dumpBucket.getFileRoot().getAbsoluteFile() + "/bucketkeys.keys");
 		long keyCount = this.scanKeysForBucketSize(keyPath);
 		
+		ClientWriterFactory clientWriterFactory = new ClientWriterFactory();
+		clientWriterFactory.setBucketRename(this.config.getDestinationBucket());
+		
 		AbstractClientDataWriter writer = 
-				new ThreadedClientDataWriter(connection, new ClientWriterFactory(), dumpBucket,
+				new ThreadedClientDataWriter(connection, clientWriterFactory, dumpBucket,
 						this.config.getRiakWorkerCount(), this.config.getQueueSize());
 
 		KeyJournal keyJournal = new KeyJournal(
@@ -128,18 +130,23 @@ public class BucketLoader {
 					KeyJournal.Mode.WRITE);
 		
 		try {
-			IRiakObject riakObject = null;
-			while ((riakObject = writer.writeObject()) != null) {
+			Event event = Event.NULL;
+			while (!(event = writer.writeObject()).isNullEvent()) {
 				if (this.verboseStatusOutput) {
 					this.printStatus(keyCount, objectCount, false);
 				}
 				
-				keyJournal.write(riakObject);
-//				dumpBucket.writeLoadedKey(riakObject);
-				++objectCount;
+				if (event.isRiakObjectEvent()) {
+					keyJournal.write(event.asRiakObjectEvent().key());
+					++objectCount;
+				} else if (event.isIoErrorEvent()) {
+					throw event.asIoErrorEvent().ioException();
+				}
+				
 			}
 		} catch (IOException e) {
 			log.error("Riak error storing value to " + bucketName, e);
+			error = true;
 			++errorCount;
 		} finally {
 			keyJournal.close();
@@ -147,7 +154,11 @@ public class BucketLoader {
 		}
 	
 		long stop = System.currentTimeMillis();
-		summary.addStatistic(bucketName, objectCount, stop - start, dumpBucket.getBucketSize(), 0l);
+		if (!error) {
+			summary.addStatistic(bucketName, objectCount, stop - start, dumpBucket.getBucketSize(), 0l);
+		} else {
+			this.summary.addStatistic(bucketName, -1l, stop-start, 0l, 0l);
+		}
 		
 		if (this.verboseStatusOutput) {
 			this.printStatus(keyCount, objectCount, true);

@@ -12,6 +12,7 @@ import java.util.zip.GZIPInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.basho.proserv.datamigrator.events.RiakObjectEvent;
 import com.basho.riak.client.IRiakObject;
 import com.basho.riak.client.builders.RiakObjectBuilder;
 import com.basho.riak.client.query.indexes.RiakIndexes;
@@ -39,7 +40,7 @@ public class RiakObjectReader implements IRiakObjectReader{
 		}
 	}
 	
-	public IRiakObject readRiakObject() {
+	public RiakObjectEvent readRiakObject() {
 		try {
 			RiakObject riakObject = riakObjectIo.readRiakObject(this.dataInputStream);
 			IRiakObject object = ConversionUtilWrapper.convertConcreteToInterface(riakObject);
@@ -54,9 +55,9 @@ public class RiakObjectReader implements IRiakObjectReader{
 		        builder.withIndexes(new RiakIndexes(object.allBinIndexes(), object.allIntIndexesV2()));//object.allIntIndexes()));
 		        builder.withUsermeta(object.getMeta());
 		        IRiakObject newObject = builder.build();
-		        return newObject;
+		        return new RiakObjectEvent(newObject);
 			} else {
-				return object;
+				return new RiakObjectEvent(object);
 			}
 		} catch (InvalidProtocolBufferException e) {
 			log.error("readRiakObject protocol buffer exception", e);
@@ -67,7 +68,7 @@ public class RiakObjectReader implements IRiakObjectReader{
 			log.error("readRiakObject IO exception", e);
 			++this.errorCount;
 		}
-		return null;
+		return RiakObjectEvent.NULL;
 	}
 		
 	public int errorCount() {

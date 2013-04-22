@@ -1,6 +1,5 @@
 package com.basho.proserv.datamigrator.riak;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -11,30 +10,20 @@ import java.util.concurrent.ArrayBlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.basho.proserv.datamigrator.events.Event;
+import com.basho.proserv.datamigrator.events.RiakObjectEvent;
 import com.basho.proserv.datamigrator.util.NamedThreadFactory;
-import com.basho.riak.client.IRiakObject;
-import com.basho.riak.client.raw.pbc.ConversionUtilWrapper;
-import com.basho.riak.pbc.RiakObject;
-import com.google.protobuf.ByteString;
 
 public class ThreadedClientDataWriter extends AbstractClientDataWriter {
+	@SuppressWarnings("unused")
 	private final Logger log = LoggerFactory.getLogger(ThreadedClientDataWriter.class);
-//	public enum Status {SUCCESS, STOPPED, ERROR};
+
 	private final NamedThreadFactory threadFactory = new NamedThreadFactory();
 	private final ExecutorService executor = Executors.newCachedThreadPool(threadFactory);
 	
 	private final int workerCount;
-	private final ArrayBlockingQueue<IRiakObject> objectQueue;
-	private final ArrayBlockingQueue<IRiakObject> returnQueue;
-
-	private static String ERROR_STRING= "ERRORERRORERRORERROR";
-	private static ByteString ERROR_FLAG = ByteString.copyFromUtf8(ERROR_STRING);
-	private static String STOP_STRING = "STOPSTOPSTOPSTOPSTOP";
-	private static ByteString STOP_FLAG = ByteString.copyFromUtf8(STOP_STRING);
-	private static IRiakObject STOP_OBJECT = ConversionUtilWrapper.convertConcreteToInterface(
-			new RiakObject(STOP_FLAG, STOP_FLAG, STOP_FLAG, STOP_FLAG));
-	private static IRiakObject ERROR_OBJECT = ConversionUtilWrapper.convertConcreteToInterface(
-			new RiakObject(ERROR_FLAG, ERROR_FLAG, ERROR_FLAG, ERROR_FLAG));
+	private final ArrayBlockingQueue<Event> objectQueue;
+	private final ArrayBlockingQueue<Event> returnQueue;
 	
 	private final List<Future<Runnable>> threads = new ArrayList<Future<Runnable>>();
 	
@@ -42,59 +31,54 @@ public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 	
 	public ThreadedClientDataWriter(Connection connection,
 			IClientWriterFactory clientWriterFactory, 
-			Iterable<IRiakObject> objectSource, 
+			Iterable<Event> objectSource, 
 			int workerCount,
 			int queueSize) {
 		super(connection, clientWriterFactory, objectSource);
 		this.workerCount = workerCount;
-		this.objectQueue = new ArrayBlockingQueue<IRiakObject>(queueSize);
-		this.returnQueue = new ArrayBlockingQueue<IRiakObject>(queueSize);
+		this.objectQueue = new ArrayBlockingQueue<Event>(queueSize);
+		this.returnQueue = new ArrayBlockingQueue<Event>(queueSize);
 		
 		this.run();
 	}
 	
 	@Override
-	public IRiakObject writeObject() throws IOException {
-		IRiakObject riakObject = null;
+	public Event writeObject() {
+		Event event = Event.NULL;
 		try {
-			riakObject = this.returnQueue.take();
+			while ((event = this.returnQueue.poll()) == null) {
+				Thread.sleep(RETRY_WAIT_TIME);
+			}
+//			event = this.returnQueue.take();
 			
 			// Fast exit if not flag
-			if (isError(riakObject) || 
-					isStop(riakObject)) {
+			if (event.isIoErrorEvent() || event.isNullEvent()) {
 				while (!Thread.interrupted()) {
-					if (isError(riakObject)) {
-						this.interruptWorkers();
-						throw new IOException("Error writing Riak Object, shutting down bucket load process");
-					} else if (isStop(riakObject)) {
+					if (event.isIoErrorEvent()) {
+						// Abnormal stop, interrupt non-dying workers, close executor
+						this.terminate();
+						break;
+					} else if (event.isNullEvent()) {
 						++this.stoppedCount;
 						if (this.stoppedCount == this.workerCount) {
-							riakObject = null;
+							this.close();
 							break;
 						}
-					} else {
+					} else { // else event is a normal event
 						break;
 					}
-					riakObject = this.returnQueue.take();
+					event = this.returnQueue.take();
 				}
 			}
 		} catch (InterruptedException e) {
 			//success = false;
-		}
-		
-		if (riakObject == null) {
+		} catch (Throwable e) {
+			// not sure what went wrong, print a stack trace
+			e.printStackTrace();
 			this.close();
 		}
-		
-		return riakObject;
-	}
-
-	private static boolean isStop(IRiakObject riakObject) {
-		return riakObject.getBucket().compareTo(STOP_STRING)==0;
-	}
-	
-	private static boolean isError(IRiakObject riakObject) {
-		return riakObject.getBucket().compareTo(ERROR_STRING)==0;
+				
+		return event;
 	}
 	
 	private void interruptWorkers() {
@@ -107,6 +91,10 @@ public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 		this.executor.shutdown();
 	}
 
+	public void terminate() {
+		this.interruptWorkers();
+		this.close();
+	}
 	
 	@SuppressWarnings("unchecked")
 	private void run() {
@@ -123,12 +111,12 @@ public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 	}
 	
 	private class RiakObjectProducerThread implements Runnable {
-		private final Iterable<IRiakObject> riakObjects;
-		private final ArrayBlockingQueue<IRiakObject> objectQueue;
+		private final Iterable<Event> riakObjects;
+		private final ArrayBlockingQueue<Event> objectQueue;
 		private final int stopCount;
 
-		public RiakObjectProducerThread(Iterable<IRiakObject> riakObjects,
-					ArrayBlockingQueue<IRiakObject> objectQueue,
+		public RiakObjectProducerThread(Iterable<Event> riakObjects,
+					ArrayBlockingQueue<Event> objectQueue,
 					int stopCount) {
 			this.riakObjects = riakObjects;
 			this.objectQueue = objectQueue;
@@ -138,9 +126,9 @@ public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 		@Override
 		public void run() {
 			try {
-				for (IRiakObject object : this.riakObjects) {
+				for (Event object : this.riakObjects) {
 					if (Thread.interrupted()) {
-						break;
+						return;
 					}
 //					objectQueue.put(object);
 					while (!objectQueue.offer(object)) {
@@ -148,7 +136,7 @@ public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 					}
 				}
 				for (int i = 0; i < this.stopCount; ++i) {
-					this.objectQueue.put(STOP_OBJECT);
+					this.objectQueue.put(RiakObjectEvent.STOP);
 				}
 			} catch (InterruptedException e) {
 				// no-op
@@ -160,12 +148,12 @@ public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 	private class RiakObjectWriterThread implements Runnable {
 		
 		private final IClientWriter writer;
-		private final ArrayBlockingQueue<IRiakObject> objectQueue;
-		private final ArrayBlockingQueue<IRiakObject> returnQueue;
+		private final ArrayBlockingQueue<Event> objectQueue;
+		private final ArrayBlockingQueue<Event> returnQueue;
 		
 		public RiakObjectWriterThread(IClientWriter writer,
-					ArrayBlockingQueue<IRiakObject> objectQueue,
-					ArrayBlockingQueue<IRiakObject> returnQueue) {
+					ArrayBlockingQueue<Event> objectQueue,
+					ArrayBlockingQueue<Event> returnQueue) {
 			this.writer = writer;
 			this.objectQueue = objectQueue;
 			this.returnQueue = returnQueue;
@@ -174,48 +162,39 @@ public class ThreadedClientDataWriter extends AbstractClientDataWriter {
 		@Override
 		public void run() {
 			try {
-				try {
-					while (!Thread.interrupted()) {
-						IRiakObject object = this.objectQueue.poll();
-						if (object == null) {
-							Thread.sleep(10);
-							continue;
-						}
-						
-//						IRiakObject object = this.objectQueue.take();
-						if (isStop(object)) {
-							break;
-						}
-						int retries = 0;
-						while (!Thread.interrupted() && retries < MAX_RETRIES) {
-							try {
-								this.writer.storeRiakObject(object);
-								break;
-							} catch (IOException e) {
-								++retries;
-								log.error(String.format("Store fail %d on key %s, retrying", retries, object.getKey()), e);
-								Thread.sleep(RETRY_WAIT_TIME);
-								if (retries > MAX_RETRIES) {
-									log.error(String.format("Max retries %d reached", MAX_RETRIES), e);
-									throw e;
-								}
-							} catch (Throwable t) {
-								t.printStackTrace();
-							}
-						}
-						while (!this.returnQueue.offer(object)) {
-							Thread.sleep(10);
-						}
-//						this.returnQueue.put(object);
+				while (!Thread.interrupted()) {
+//					Event object = this.objectQueue.poll();
+//					if (object == null) {
+//						Thread.sleep(10);
+//						continue; 
+//					}
+					Event object = this.objectQueue.take();
+					
+					// In the case where events are sourced from a ClientDataReader
+					// we can expect IoErrorEvents and ValueErrorEvents, 
+					// just pass them back for handling.
+					if (!object.isRiakObjectEvent()) {
+						this.returnQueue.put(object);
+						break;
 					}
-					this.returnQueue.put(STOP_OBJECT);
-				} catch (IOException e) {
-					this.returnQueue.put(ERROR_OBJECT);
+					
+					RiakObjectEvent riakObject = object.asRiakObjectEvent();
+					
+					if (riakObject.isStopEvent()) {
+						break;
+					}
+											
+					Event event = this.writer.storeRiakObject(riakObject);
+					
+					while (!this.returnQueue.offer(event)) {
+						Thread.sleep(10);
+					}
+//						this.returnQueue.put(object);
 				}
-			} catch (InterruptedException e) {
-				//no-op
+				this.returnQueue.put(Event.NULL);
+			} catch (Throwable t) {
+				t.printStackTrace();
 			}
-			
 		}
 		
 	}

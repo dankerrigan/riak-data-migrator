@@ -7,4 +7,10 @@ public class DummyClientWriterFactory implements IClientWriterFactory {
 		return new DummyClientWriter();
 	}
 
+	@Override
+	public void setBucketRename(String bucketName) {
+		// TODO Auto-generated method stub
+		
+	}
+
 }

@@ -38,20 +38,20 @@ public class ClientReader implements IClientReader {
 			}
 		} catch (IOException e) {
 			if (retryCount < Configuration.MAX_RETRY) {
-				log.error(String.format("Fetch fail %d, Riak Exception, on key %s / %s , retrying", retryCount, bucket, key), e);
+				log.warn(String.format("Fetch fail %d, Riak Exception, on key %s / %s , retrying", retryCount, bucket, key), e);
 				Thread.sleep(Configuration.RETRY_WAIT_MILLIS);
 				return fetchRiakObject(bucket, key, retryCount + 1);
 			} else {
-				log.error("Max retries %d reached on key %s / %s", Configuration.MAX_RETRY, bucket, key, e);
+				log.error(String.format("Max retries %d reached on key %s / %s", Configuration.MAX_RETRY, bucket, key, e));
 				return new IoErrorEvent(new Key(bucket, key), e);
 			}
 		} catch (RiakNotFoundException e) {
 			if (retryCount < Configuration.MAX_RETRY) {
-				log.error(String.format("Fetch fail %d, Not Found, on key %s / %s, retrying", retryCount, bucket, key), e);
+				log.warn(String.format("Fetch fail %d, Not Found, on key %s / %s, retrying", retryCount, bucket, key), e);
 				Thread.sleep(Configuration.RETRY_WAIT_MILLIS);
 				return fetchRiakObject(bucket, key, retryCount + 1);
 			} else {
-				log.error("Max retries %d reached on key %s / %s", Configuration.MAX_RETRY, bucket, key, e);
+				log.error(String.format("Max retries %d reached on key %s / %s", Configuration.MAX_RETRY, bucket, key, e));
 				return new ValueErrorEvent(new Key(bucket, key));
 			}
 		}

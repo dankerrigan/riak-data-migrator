@@ -9,6 +9,7 @@ import java.util.Set;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import com.basho.proserv.datamigrator.events.RiakObjectEvent;
 import com.basho.proserv.datamigrator.io.RiakObjectReader;
 import com.basho.proserv.datamigrator.io.RiakObjectWriter;
 import com.basho.riak.client.IRiakObject;
@@ -31,22 +32,24 @@ public class RiakObjectReaderWriterTests {
 				   ByteString.copyFromUtf8(""),
 				   ByteString.copyFromUtf8("")));
 		
+		RiakObjectEvent event = new RiakObjectEvent(riakObject);
+		
 		File dataFile = tempFolder.newFile();
 //		File keys = tempFolder.newFile();
 		RiakObjectWriter writer = new RiakObjectWriter(dataFile);
 		
 		for (int i = 0; i < objectCount; ++i) {
-			writer.writeRiakObject(riakObject);
+			writer.writeRiakObject(event);
 		}
 		
 		writer.close();
 		
 		RiakObjectReader reader = new RiakObjectReader(dataFile, false);
 		@SuppressWarnings("unused")
-		IRiakObject readRiakObject = null;
+		RiakObjectEvent readEvent = RiakObjectEvent.NULL;
 		
 		int readCount = 0;
-		while((readRiakObject = reader.readRiakObject()) != null) {
+		while(!(readEvent = reader.readRiakObject()).isNullEvent()) {
 			++readCount;
 		}
 		
@@ -77,13 +80,15 @@ public class RiakObjectReaderWriterTests {
 		File dataFile = tempFolder.newFile();
 //		File keys = tempFolder.newFile();
 		RiakObjectWriter writer = new RiakObjectWriter(dataFile);
+		RiakObjectEvent event = new RiakObjectEvent(riakObject);
 		
-		writer.writeRiakObject(riakObject);
+		writer.writeRiakObject(event);
 		
 		writer.close();
 		
 		RiakObjectReader reader = new RiakObjectReader(dataFile, false);
-		IRiakObject readObject = reader.readRiakObject();
+		RiakObjectEvent readEventObject = reader.readRiakObject();
+		IRiakObject readObject = event.riakObjects()[0];
 		
 		Set<Integer> intIndex = readObject.getIntIndex("index1");
 		Set<String> strIndex = readObject.getBinIndex("index2");
@@ -111,7 +116,8 @@ public class RiakObjectReaderWriterTests {
 		reader.close();
 		
 		reader = new RiakObjectReader(dataFile, true);
-		readObject = reader.readRiakObject();
+		readEventObject = reader.readRiakObject(); 
+		readObject = readEventObject.riakObjects()[0];
 		
 		intIndex = readObject.getIntIndex("index1");
 		strIndex = readObject.getBinIndex("index2");

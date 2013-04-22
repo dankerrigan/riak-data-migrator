@@ -10,6 +10,7 @@ import com.basho.proserv.datamigrator.events.Event;
 import com.basho.proserv.datamigrator.io.Key;
 
 public class ClientDataReader extends AbstractClientDataReader {
+	@SuppressWarnings("unused")
 	private final Logger log = LoggerFactory.getLogger(ClientDataReader.class);
 	
 	private final IClientReader reader;
@@ -38,5 +39,4 @@ public class ClientDataReader extends AbstractClientDataReader {
 
 		return event;
 	}
-	
 }

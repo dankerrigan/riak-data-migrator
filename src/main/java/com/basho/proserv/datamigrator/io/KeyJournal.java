@@ -41,6 +41,13 @@ public class KeyJournal implements Iterable<Key> {
 		this.mode = mode;
 	}
 	
+	public void write(Key key) throws IOException {
+		if (key == null) {
+			throw new IllegalArgumentException("key must not be null");
+		}
+		this.write(key.bucket(), key.key());
+	}
+	
 	public void write(String bucket, String key) throws IOException {
 		if (mode == Mode.READ) {
 			throw new IllegalArgumentException ("KeyJournal is in READ mode for write operation");

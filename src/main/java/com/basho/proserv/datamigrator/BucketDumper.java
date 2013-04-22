@@ -8,15 +8,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.basho.proserv.datamigrator.events.Event;
+import com.basho.proserv.datamigrator.events.RiakObjectEvent;
 import com.basho.proserv.datamigrator.io.KeyJournal;
 import com.basho.proserv.datamigrator.io.RiakObjectBucket;
 import com.basho.proserv.datamigrator.riak.AbstractClientDataReader;
 import com.basho.proserv.datamigrator.riak.ClientReaderFactory;
 import com.basho.proserv.datamigrator.riak.Connection;
 import com.basho.proserv.datamigrator.riak.RiakBucketProperties;
-import com.basho.proserv.datamigrator.riak.RiakNotFoundException;
 import com.basho.proserv.datamigrator.riak.ThreadedClientDataReader;
-import com.basho.riak.client.IRiakObject;
 import com.basho.riak.client.bucket.BucketProperties;
 
 // BucketDumper will only work with clients returning protobuffer objects, ie PBClient
@@ -123,6 +122,7 @@ public class BucketDumper {
 		long objectCount = 0;
 		long valueErrorCount = 0;
 		this.previousCount = 0;
+		boolean error = false;
 
 		RiakObjectBucket dumpBucket = this.createBucket(bucketName);
 
@@ -164,12 +164,10 @@ public class BucketDumper {
 			Event event = null;
 			while (!(event = reader.readObject()).isNullEvent()) {
 				if (event.isRiakObjectEvent()) {
-					IRiakObject objects[] = event.asRiakObjectEvent().riakObjects();
-					for (int i = 0; i < objects.length; ++i) {
-						dumpBucket.writeRiakObject(objects[i]);
-						++objectCount;
-					}
-					keyJournal.write(objects[0]);
+					RiakObjectEvent riakEvent = event.asRiakObjectEvent(); 
+					dumpBucket.writeRiakObject(riakEvent);
+					objectCount += riakEvent.count();
+					keyJournal.write(riakEvent.key());
 				} else if (event.isValueErrorEvent()) { // Count not-founds
 					++valueErrorCount;
 				} else if (event.isIoErrorEvent()) { // Exit on IOException retry reached
@@ -182,8 +180,7 @@ public class BucketDumper {
 			}
 		} catch (IOException e) {
 			log.error("Riak error dumping objects for bucket: " + bucketName, e);
-			this.summary.addStatistic(bucketName, -1l, 0l, 0l, valueErrorCount);
-			e.printStackTrace();
+			error = true;
 			++errorCount;
 		} catch (InterruptedException e) {
 			//no-op
@@ -194,11 +191,15 @@ public class BucketDumper {
 		
 		long stop = System.currentTimeMillis();
 		
-		this.summary.addStatistic(bucketName, 
-								  objectCount, 
-								  stop-start, 
-								  dumpBucket.getBucketSize(), 
-								  valueErrorCount);
+		if (!error) {
+			this.summary.addStatistic(bucketName, 
+					objectCount, 
+					stop-start, 
+					dumpBucket.getBucketSize(), 
+					valueErrorCount);
+		} else {
+			this.summary.addStatistic(bucketName, -1l, stop-start, 0l, valueErrorCount);
+		}
 		
 		if (this.verboseStatusOutput) {
 			this.printStatus(keyCount, objectCount, true);

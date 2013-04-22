@@ -10,9 +10,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.basho.proserv.datamigrator.Configuration;
-import com.basho.riak.client.IRiakObject;
+import com.basho.proserv.datamigrator.events.Event;
+import com.basho.proserv.datamigrator.events.RiakObjectEvent;
 
-public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, Iterable<IRiakObject> {
+public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, Iterable<Event> {
 	public static enum BucketMode { READ, WRITE };
 	
 	private final Logger log = LoggerFactory.getLogger(RiakObjectBucket.class);
@@ -97,7 +98,7 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 		this.filePrefix = filePrefix;
 	}
 	
-	public boolean writeRiakObject(IRiakObject riakObject) {
+	public boolean writeRiakObject(RiakObjectEvent riakObject) {
 		if (this.bucketMode == BucketMode.READ) {
 			throw new IllegalArgumentException("Bucket is in Read Mode");
 		}
@@ -108,28 +109,28 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 			closeChunk();
 			writeNewChunkFile();
 		}
+		
 		this.currentRiakObjectWriter.writeRiakObject(riakObject);
-		this.currentChunkByteSize += riakObject.getValue().length;
+		this.currentChunkByteSize += riakObject.dataSize();
 		++this.currentChunkCount;
 		++this.bucketCount;
 		return true;
 	}
 	
-	public IRiakObject readRiakObject() {
+	public RiakObjectEvent readRiakObject() {
 		if (this.bucketMode == BucketMode.WRITE) {
 			throw new IllegalArgumentException("Bucket is in Write Mode");
 		}
-		
-		IRiakObject riakObject = this.currentRiakObjectReader.readRiakObject();
-		if (riakObject == null) {
+		RiakObjectEvent event = this.currentRiakObjectReader.readRiakObject();
+		if (event.isNullEvent()) {
 			if (this.readNewChunkFile()) {
-				riakObject = this.currentRiakObjectReader.readRiakObject();
+				event = this.currentRiakObjectReader.readRiakObject();
 			} // else returning null
 		}
-		if (riakObject != null) {
-			this.currentChunkByteSize += riakObject.getValue().length;
+		if (event != null) {
+			this.currentChunkByteSize += event.riakObjects()[0].getValue().length;
 		}
-		return riakObject; 
+		return event; 
 	}
 		
 	public File getFileRoot() {
@@ -200,7 +201,7 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 	}
 
 	@Override
-	public Iterator<IRiakObject> iterator() {
+	public Iterator<Event> iterator() {
 		return new RiakObjectIterator(this);
 	}
 	
@@ -208,10 +209,10 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 		return new RiakBucketKeys(this);
 	}
 	
-	private class RiakObjectIterator implements Iterator<IRiakObject> {
+	private class RiakObjectIterator implements Iterator<Event> {
 		private final RiakObjectBucket riakObjectBucket;
 		
-		private IRiakObject nextObject = null;
+		private RiakObjectEvent nextObject = null;
 		
 		public RiakObjectIterator(RiakObjectBucket riakObjectBucket) {
 			this.riakObjectBucket = riakObjectBucket;
@@ -220,12 +221,12 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 		
 		@Override
 		public boolean hasNext() {
-			return nextObject != null;
+			return !nextObject.isNullEvent();
 		}
 
 		@Override
-		public IRiakObject next() {
-			IRiakObject object = this.nextObject;
+		public Event next() {
+			RiakObjectEvent object = this.nextObject;
 			this.nextObject = this.riakObjectBucket.readRiakObject();
 			return object;
 		}
@@ -250,9 +251,9 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 	}
 	
 	private class RiakBucketKeyIterator implements Iterator<Key> {
-		Iterator<IRiakObject> objectIterator;
+		Iterator<Event> objectIterator;
 		
-		public RiakBucketKeyIterator(Iterator<IRiakObject> objectIterator) {
+		public RiakBucketKeyIterator(Iterator<Event> objectIterator) {
 			this.objectIterator = objectIterator;
 		}
 
@@ -263,8 +264,12 @@ public class RiakObjectBucket implements IRiakObjectWriter, IRiakObjectReader, I
 
 		@Override
 		public Key next() {
-			IRiakObject object = objectIterator.next();
-			return new Key(object.getBucket(), object.getKey());
+			Event event = objectIterator.next();
+			if (event.isRiakObjectEvent()) {
+				RiakObjectEvent riakEvent = event.asRiakObjectEvent();
+				return riakEvent.key();
+			}
+			return null;
 		}
 
 		@Override

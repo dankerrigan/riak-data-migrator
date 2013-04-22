@@ -39,14 +39,17 @@ public class Main {
 		if (cmd.hasOption("delete")) {
 			++cmdCount;
 		}
+		if (cmd.hasOption("copy")) {
+			++cmdCount;
+		}
 		
 		
 		if (cmdCount == 0) {
-			System.out.println("You must specify l, d, k, or delete");
+			System.out.println("You must specify l, d, k, copy, or delete");
 			System.exit(1);
 		}
 		if (cmdCount > 1) {
-			System.out.println("Load (l), Dump (d), Keys (k) and Delete (delete) are exclusive options.");
+			System.out.println("Load (l), Dump (d), Keys (k), Copy (copy), and Delete (delete) are exclusive options.");
 			System.exit(1);
 		}
 		
@@ -69,10 +72,18 @@ public class Main {
 			System.out.println("Delete not compatible with All (a) option. Specify buckets indidually instead.");
 		}
 		
+		if (cmd.hasOption("copy") && (cmd.hasOption('t') || cmd.hasOption('k'))) {
+			System.out.println("Copy not compatible with t or k options.");
+		}
+		
 		Configuration config = handleCommandLine(cmd);
 		
 		if (cmd.hasOption("delete")) {
 			runDelete(config);
+		}
+		
+		if (cmd.hasOption("copy")) {
+			runCopy(config);
 		}
 		
 		if (cmd.hasOption("l") || (cmd.hasOption("l") && cmd.hasOption("t"))) {
@@ -89,16 +100,18 @@ public class Main {
 		Configuration config = new Configuration();
 		
 		// Data path
-		if (cmd.hasOption("r")) {
-			File dataPath = new File(cmd.getOptionValue("r"));
-			if (!dataPath.exists()) {
-				System.out.println("Data path " + dataPath.getAbsolutePath() + " does not exist.");
+		if (!cmd.hasOption("copy")) {
+			if (cmd.hasOption("r")) {
+				File dataPath = new File(cmd.getOptionValue("r"));
+				if (!dataPath.exists()) {
+					System.out.println("Data path " + dataPath.getAbsolutePath() + " does not exist.");
+					System.exit(1);
+				}
+				config.setFilePath(dataPath);
+			} else {
+				System.out.println("Data path was not specified.");
 				System.exit(1);
 			}
-			config.setFilePath(dataPath);
-		} else {
-			System.out.println("Data path was not specified.");
-			System.exit(1);
 		}
 		
 		// Not available
@@ -125,6 +138,24 @@ public class Main {
 			System.exit(1);
 		}
 		
+		if (cmd.hasOption("copyhost")) {
+			config.addDestinationHost(cmd.getOptionValue("copyhost"));
+		}
+		
+		if (cmd.hasOption("copyhostsfile")) {
+			try {
+				config.addDestinationHosts(Utilities.readFileLines(cmd.getOptionValue("copyhostsfiles")));
+			} catch (Exception e) {
+				System.out.println("Could not read file containting hosts." + e.getMessage());
+				System.exit(1);
+			}
+		}
+		if (cmd.hasOption("copy") && config.getDestinationHosts().size() == 0) {
+			System.out.println("No destination hosts specified");;
+			System.exit(1);
+		}
+		
+		
 		// PB port
 		if (cmd.hasOption("p")) {
 			try {
@@ -147,6 +178,18 @@ public class Main {
 			}
 		} else {
 			System.out.println("HTTP port not specified, using the default: 8098");
+		}
+		
+		// Destination PB port
+		if (cmd.hasOption("copypbport")) {
+			try {
+				config.setPort(Integer.parseInt(cmd.getOptionValue("copypbport")));
+			} catch (NumberFormatException e) {
+				System.out.println("Destination PB Port (copypbport) argument is not an integer.");
+				System.exit(1);
+			}
+		} else {
+			System.out.println("Destination PB Port not specified, using the default: 8087");
 		}
 		
 		// Single bucket specifier
@@ -174,6 +217,7 @@ public class Main {
 			config.setOperation(Configuration.Operation.BUCKET_PROPERTIES);
 		}
 		
+		
 		if (config.getBucketNames().size() == 0 && !cmd.hasOption("a")) {
 			System.out.println("No buckets specified to load");
 			System.exit(1);
@@ -197,6 +241,22 @@ public class Main {
 			}
 		}
 		
+		// Bucket Copy
+		if (cmd.hasOption("copy") && config.getBucketNames().size() > 0) {
+			config.setOperation(Configuration.Operation.COPY_BUCKETS);
+		}
+		if (cmd.hasOption("copy") && cmd.hasOption("a")) {
+			config.setOperation(Configuration.Operation.COPY_ALL);
+		}
+		
+		if (cmd.hasOption("destinationbucket")) {
+			if (config.getBucketNames().size() != 1) {
+				System.out.println("Destination bucket option only valid when specifying a single bucket.");
+				System.exit(1);
+			}
+			config.setDestinationBucket(cmd.getOptionValue("destinationbucket"));
+		}
+		
 		if (cmd.hasOption("q")) {
 			int queueSize = Integer.parseInt(cmd.getOptionValue("q"));
 			config.setQueueSize(queueSize);
@@ -207,10 +267,6 @@ public class Main {
 			config.setVerboseStatus(true);
 		}
 		
-		// not necessary...
-//		if (cmd.hasOption("resetvclock")) {
-//			config.setResetVClock(true);
-//		}
 		if (cmd.hasOption("riakworkercount")) {
 			try {
 				config.setRiakWorkerCount(Integer.parseInt(cmd.getOptionValue("riakworkercount")));
@@ -247,19 +303,15 @@ public class Main {
 		}
 		
 		BucketDelete deleter = new BucketDelete(connection, config.getVerboseStatus());
-		
-//		long start = System.currentTimeMillis();
+
+		@SuppressWarnings("unused")
 		long deleteCount = 0;
 		if (config.getOperation() == Configuration.Operation.DELETE_BUCKETS) {
 			deleteCount = deleter.deleteBuckets(config.getBucketNames());
 		}
-//		long stop = System.currentTimeMillis();
 		
 		connection.close();
-		
-//		double totalTime = ((stop-start)/1000.0);
-//		Double recsPerSec = deleteCount / totalTime;
-//		System.out.println("\nLoaded " + loadCount + " in " + totalTime + " seconds. " + recsPerSec + " objects/sec");
+
 		printSummary(deleter.summary, "Load Summary:");
 	}
 	
@@ -287,7 +339,7 @@ public class Main {
 		
 		BucketLoader loader = new BucketLoader(connection, httpConnection, config);
 		
-//		long start = System.currentTimeMillis();
+		@SuppressWarnings("unused")
 		long loadCount = 0;
 		if (config.getOperation() == Configuration.Operation.BUCKETS) {
 			loadCount = loader.LoadBuckets(config.getBucketNames());
@@ -296,14 +348,10 @@ public class Main {
 		} else {
 			loadCount = loader.LoadAllBuckets();
 		}
-//		long stop = System.currentTimeMillis();
 		
 		connection.close();
 		httpConnection.close();
 		
-//		double totalTime = ((stop-start)/1000.0);
-//		Double recsPerSec = loadCount / totalTime;
-//		System.out.println("\nLoaded " + loadCount + " in " + totalTime + " seconds. " + recsPerSec + " objects/sec");
 		printSummary(loader.summary, "Load Summary:");
 	}
 	
@@ -334,7 +382,8 @@ public class Main {
 		
 		boolean keysOnly = (config.getOperation() == Configuration.Operation.ALL_KEYS ||
 				config.getOperation() == Configuration.Operation.BUCKET_KEYS);
-//		long start = System.currentTimeMillis();
+
+		@SuppressWarnings("unused")
 		long dumpCount = 0;
 		if (config.getOperation() == Configuration.Operation.BUCKETS || 
 				config.getOperation() == Configuration.Operation.BUCKET_KEYS) {
@@ -344,15 +393,55 @@ public class Main {
 		} else {
 			dumpCount = dumper.dumpAllBuckets(config.getResume(), keysOnly);
 		}
-//		long stop = System.currentTimeMillis();
 		
 		connection.close();
 		httpConnection.close();
-		
-//		double totalTime = ((stop-start)/1000.0);
-//		double recsPerSec = dumpCount / totalTime;
-//		System.out.println("\nDumped " + dumpCount + " in " + totalTime + " seconds. " + recsPerSec + " objects/sec");
+
 		printSummary(dumper.summary, "Dump Summary:");
+	}
+	
+	private static void runCopy(Configuration config) {
+		Connection fromConnection = new Connection(config.getMaxRiakConnections());
+		Connection toConnection = new Connection(config.getMaxRiakConnections());
+		
+		if (config.getHosts().size() == 1) {
+			String host = config.getHosts().toArray(new String[1])[0];
+			fromConnection.connectPBClient(host, config.getPort());
+		} else {
+			fromConnection.connectPBCluster(config.getHosts(), config.getPort());
+		}
+		
+		if (config.getDestinationHosts().size() == 1) {
+			String host = config.getDestinationHosts().toArray(new String[1])[0];
+			toConnection.connectPBClient(host, config.getDestinationPort());
+		} else {
+			toConnection.connectPBCluster(config.getDestinationHosts(), config.getDestinationPort());
+		}
+		
+		if (!fromConnection.testConnection()) {
+			System.out.println(String.format("Could not connect to Riak on PB port %d", config.getPort()));
+			System.exit(-1);
+		}
+		if (!toConnection.testConnection()) {
+			System.out.println(String.format("Could not connect to destination Riak on PB port %d", config.getDestinationPort()));
+			System.exit(-1);
+		}
+		
+		BucketTransfer mover = new BucketTransfer(fromConnection, toConnection, config);
+		
+		@SuppressWarnings("unused")
+		long transferCount = 0;
+		if (config.getOperation() == Configuration.Operation.COPY_BUCKETS) {
+			transferCount = mover.transferBuckets(config.getBucketNames(), false);
+		} else {
+			transferCount = mover.transferAllBuckets(false);
+		}
+		
+		fromConnection.close();
+		toConnection.close();
+		
+		printSummary(mover.summary, "Copy Summary:");
+		
 	}
 	
 	public static void printHelp(String arg) {
@@ -437,6 +526,11 @@ public class Main {
 		options.addOption("k", false, "Dump keys to file.  Cannot be used with l, d");
 		options.addOption("t", false, "Download bucket properties");
 		options.addOption("q", true, "Set the queue Size");
+		options.addOption("copy", false, "Copy bucket/buckets to a different Riak Cluster. Cannot be used with d, k, l, or delete");
+		options.addOption("copyhost", true, "Copy destination host");
+		options.addOption("copyhostsfile", true, "Specify file containing destination cluster hosts");
+		options.addOption("copypbport", true, "Copy destination protocol buffers port");
+		options.addOption("destinationbucket", true, "Destination Bucket name for single bucket copy");
 //		options.addOption("j", true, "Resume based on previously written keys");
 		options.addOption("resetvclock", false, "Resets object's VClock prior to being loaded in Riak");
 		options.addOption("riakworkercount", true, "Specify Riak Worker Count");

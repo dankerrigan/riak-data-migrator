@@ -3,7 +3,6 @@
   <groupId>com.basho.proserve</groupId>
   <artifactId>riak-data-migrator</artifactId>
   <packaging>jar</packaging>
-  <version>0.2.2</version>
   <name>Riak Data Migrator</name>
   <build>
   	<plugins>
@@ -87,4 +86,5 @@
   		<version>1.0.9</version>
   	</dependency>
   </dependencies>
+  <version>0.2.3</version>
 </project>

@@ -19,7 +19,9 @@ public class Configuration {
 								   ALL_KEYS, 
 								   BUCKET_KEYS, 
 								   BUCKET_PROPERTIES,
-								   DELETE_BUCKETS};
+								   DELETE_BUCKETS,
+								   COPY_ALL,
+								   COPY_BUCKETS };
 
 	
 	
@@ -29,8 +31,10 @@ public class Configuration {
 	private File filePath = new File("./");
 
 	private Set<String> hosts = new HashSet<String>();
+	private Set<String> destinationhosts = new HashSet<String>();
 	
 	private int port = DEFAULT_RIAK_PB_PORT;
+	private int destinationPort = DEFAULT_RIAK_PB_PORT; 
 	private int httpPort = DEFAULT_RIAK_HTTP_PORT;
 	private int queueSize = DEFAULT_QUEUE_SIZE;
 	
@@ -41,6 +45,8 @@ public class Configuration {
 	
 	private int riakWorkerCount = Runtime.getRuntime().availableProcessors() * RIAK_WORKER_MULTIPLIER;
 	private int maxRiakConnections = riakWorkerCount * RIAK_CLUSTER_CONNECTION_MULTIPLIER;
+	
+	private String destinationBucket = null; 
 	
 	public void setMode(Mode mode) {
 		this.mode = mode;
@@ -80,6 +86,16 @@ public class Configuration {
 		return this.hosts;
 	}
 	
+	public void addDestinationHost(String host) {
+		this.destinationhosts.add(host);
+	}
+	public void addDestinationHosts(Collection<String> hosts) {
+		this.destinationhosts.addAll(hosts);
+	}
+	public Set<String> getDestinationHosts() {
+		return this.destinationhosts;
+	}
+	
 	public void setPort(int port) {
 		this.port = port;
 	}
@@ -92,6 +108,20 @@ public class Configuration {
 	}
 	public int getHttpPort() {
 		return this.httpPort;
+	}
+	
+	public void setDestinationPort(int port) {
+		this.destinationPort = port;
+	}
+	public int getDestinationPort() {
+		return this.destinationPort;
+	}
+	
+	public void setDestinationBucket(String destinationBucket) {
+		this.destinationBucket = destinationBucket;
+	}
+	public String getDestinationBucket() {
+		return this.destinationBucket;
 	}
 	
 	public void setQueueSize(int queueSize) {

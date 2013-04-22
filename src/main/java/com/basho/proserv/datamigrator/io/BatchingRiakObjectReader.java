@@ -7,7 +7,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.basho.riak.client.IRiakObject;
+import com.basho.proserv.datamigrator.events.RiakObjectEvent;
 
 public class BatchingRiakObjectReader extends RiakObjectReader implements
 		IRiakObjectReader {
@@ -16,7 +16,7 @@ public class BatchingRiakObjectReader extends RiakObjectReader implements
 	private static final int DEFAULT_BATCH_SIZE = 10000;
 	private final int batchSize;
 	
-	private Queue<IRiakObject> queue = new LinkedBlockingQueue<IRiakObject>();
+	private Queue<RiakObjectEvent> queue = new LinkedBlockingQueue<RiakObjectEvent>();
 	private boolean finished = false;
 	
 	public BatchingRiakObjectReader(File file, boolean resetVClock) {
@@ -30,11 +30,11 @@ public class BatchingRiakObjectReader extends RiakObjectReader implements
 	}
 
 	@Override
-	public IRiakObject readRiakObject() {
+	public RiakObjectEvent readRiakObject() {
 		if (queue.isEmpty()) {
 			fill();
 		}
-		IRiakObject riakObject = queue.poll();
+		RiakObjectEvent riakObject = queue.poll();
 		if (riakObject == null && finished) {
 			return null;
 		} else {
@@ -49,7 +49,7 @@ public class BatchingRiakObjectReader extends RiakObjectReader implements
 	
 	private void fill() {
 		for (int i = 0; i < this.batchSize; ++i) {
-			IRiakObject object = super.readRiakObject();
+			RiakObjectEvent object = super.readRiakObject();
 			if (object != null) {
 				this.queue.add(object);
 			} else {

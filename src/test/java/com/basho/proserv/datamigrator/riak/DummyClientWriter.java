@@ -1,14 +1,20 @@
 package com.basho.proserv.datamigrator.riak;
 
-import java.io.IOException;
-
-import com.basho.riak.client.IRiakObject;
+import com.basho.proserv.datamigrator.events.Event;
+import com.basho.proserv.datamigrator.events.KeyEvent;
+import com.basho.proserv.datamigrator.events.RiakObjectEvent;
 
 public class DummyClientWriter implements IClientWriter {
 
 	@Override
-	public IRiakObject storeRiakObject(IRiakObject riakObject) throws IOException {
-		return riakObject;
+	public Event storeRiakObject(RiakObjectEvent riakObject) {
+		return new KeyEvent(riakObject.key());
+	}
+
+	@Override
+	public void setBucketRename(String bucketName) {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

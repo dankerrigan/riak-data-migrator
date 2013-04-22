@@ -8,6 +8,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import com.basho.proserv.datamigrator.Configuration;
+import com.basho.proserv.datamigrator.events.RiakObjectEvent;
 import com.basho.proserv.datamigrator.io.RiakObjectBucket;
 import com.basho.riak.client.IRiakObject;
 import com.basho.riak.client.raw.pbc.ConversionUtilWrapper;
@@ -37,8 +38,10 @@ public class BucketTests {
 				   ByteString.copyFromUtf8(""),
 				   ByteString.copyFromUtf8("")));
 		
+		RiakObjectEvent event = new RiakObjectEvent(riakObject);
+		
 		for (int i = 0; i < this.testRounds; ++i) {
-			writeBucket.writeRiakObject(riakObject);
+			writeBucket.writeRiakObject(event);
 		}
 		
 		writeBucket.close();
@@ -66,9 +69,11 @@ public class BucketTests {
 				   ByteString.copyFromUtf8(""),
 				   ByteString.copyFromUtf8(""),
 				   ByteString.copyFromUtf8("")));
+
+		RiakObjectEvent event = new RiakObjectEvent(riakObject);
 		
 		for (int i = 0; i < this.testRounds; ++i) {
-			writeBucket.writeRiakObject(riakObject);
+			writeBucket.writeRiakObject(event);
 		}
 		
 		writeBucket.close();
@@ -82,7 +87,7 @@ public class BucketTests {
 		int readCount = 0;
 //		@SuppressWarnings("unused")
 //		IRiakObject riakObject = null;
-		while ((riakObject = readBucket.readRiakObject()) != null) {
+		while ((event = readBucket.readRiakObject()) != null) {
 			++readCount;
 		}
 		

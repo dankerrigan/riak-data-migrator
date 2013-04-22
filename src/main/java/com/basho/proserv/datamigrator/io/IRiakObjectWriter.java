@@ -1,10 +1,10 @@
 package com.basho.proserv.datamigrator.io;
 
-import com.basho.riak.client.IRiakObject;
+import com.basho.proserv.datamigrator.events.RiakObjectEvent;
 
 public interface IRiakObjectWriter {
 	
-	public boolean writeRiakObject(IRiakObject riakObject);
+	public boolean writeRiakObject(RiakObjectEvent riakObject);
 	public void close();
 
 }

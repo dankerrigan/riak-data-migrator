@@ -8,8 +8,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import com.basho.proserv.datamigrator.Configuration;
-import com.basho.proserv.datamigrator.io.Key;
-import com.basho.proserv.datamigrator.io.KeyJournal;
+import com.basho.proserv.datamigrator.events.RiakObjectEvent;
 import com.basho.proserv.datamigrator.io.RiakObjectWriter;
 import com.basho.proserv.datamigrator.io.ThreadedRiakObjectReader;
 import com.basho.riak.client.IRiakObject;
@@ -34,16 +33,17 @@ public class ThreadedRiakObjectReaderTests {
 					ByteString.copyFromUtf8("Bucket"),
 					ByteString.copyFromUtf8("Key"),
 					ByteString.copyFromUtf8("")));
-			writer.writeRiakObject(riakObject);
+			writer.writeRiakObject(new RiakObjectEvent(riakObject));
 		}
 		writer.close();
 		
 		ThreadedRiakObjectReader reader = new ThreadedRiakObjectReader(data, config.getResetVClock(), config.getQueueSize());
 		
 		
-		IRiakObject object = null;
+		@SuppressWarnings("unused")
+		RiakObjectEvent event = null;;
 		int readCount = 0;
-		while ((object = reader.readRiakObject()) != null) {
+		while (!(event = reader.readRiakObject()).isNullEvent()) {
 			++readCount;	
 		}
 		

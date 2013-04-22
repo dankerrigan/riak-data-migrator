@@ -65,16 +65,17 @@ public class ThreadedClientDataDeleter extends AbstractClientDataDeleter {
 			//fast exit if not flag
 			if (isStop(key) || isError(key)) {
 				while (!Thread.currentThread().isInterrupted()) {
-
 					
 					if (isStop(key)) {
 						++stopCount;
 						if (this.stopCount == this.workerCount) {
 							key = null;
+							this.close();
 							break;
 						}
 					} else if (isError(key)) {
 						this.interruptWorkers();
+						this.close();
 						throw new IOException("Error deleting Riak Object, shutting down bucket load process");
 					} else { 
 						break;
@@ -86,8 +87,6 @@ public class ThreadedClientDataDeleter extends AbstractClientDataDeleter {
 			//no-op, allow to return 
 		} catch (Throwable t) {
 			t.printStackTrace();
-		}
-		finally {
 			this.close();
 		}
 		

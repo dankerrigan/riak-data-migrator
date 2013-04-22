@@ -1,6 +1,5 @@
 package com.basho.proserv.datamigrator.riak;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -16,6 +15,7 @@ import com.basho.proserv.datamigrator.io.Key;
 import com.basho.proserv.datamigrator.util.NamedThreadFactory;
 
 public class ThreadedClientDataReader extends AbstractClientDataReader {
+	@SuppressWarnings("unused")
 	private final Logger log = LoggerFactory.getLogger(ThreadedClientDataReader.class);
 
 	private final NamedThreadFactory threadFactory = new NamedThreadFactory();
@@ -26,8 +26,8 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 	private final ArrayBlockingQueue<Event> returnQueue; 
 			
 	
-	private static String ERROR_STRING = "ERRORERRORERROR";
-	private static Key ERROR_KEY = new Key(ERROR_STRING, ERROR_STRING);
+//	private static String ERROR_STRING = "ERRORERRORERROR";
+//	private static Key ERROR_KEY = new Key(ERROR_STRING, ERROR_STRING);
 	
 	private static String STOP_STRING = "STOPSTOPSTOPSTOPSTOP";
 	private static Key STOP_KEY = new Key(STOP_STRING, STOP_STRING);
@@ -69,10 +69,11 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 							break;
 						}
 					} else if (event.isIoErrorEvent()) {
-						this.interruptWorkers();
-						throw new IOException("Error reading Riak Object, shutting down bucket load process", 
-								event.asIoErrorEvent().ioException());
-					} else { 
+						// Abnormal stop, interrupt non-dying workers, close executor
+						this.terminate();
+						
+						break;
+					} else { // else event is a normal event
 						break;
 					}
 					event = this.returnQueue.take();
@@ -82,7 +83,10 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 			//no-op, allow to return 
 		} catch (Throwable t) {
 			t.printStackTrace();
+			this.close();
 		}
+		
+		
 		
 		return event;
 	}
@@ -109,6 +113,11 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 	private void close() {
 		this.executor.shutdown();
 	}
+	
+	public void terminate() {
+		this.interruptWorkers();
+		this.close();
+	}
 		
 	private class KeyReaderThread implements Runnable {
 
@@ -128,7 +137,7 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 			try {
 				for (Key key : keySource) {
 					if (Thread.currentThread().isInterrupted()) {
-						break;
+						return;
 					}
 						
 					while (!keyQueue.offer(key)) {
@@ -140,13 +149,6 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 				}
 			} catch (InterruptedException e) {
 				// no-op, allow to exit
-			} catch (Throwable e) { // key source error
-				log.error("Error listing keys", e);
-				try {
-					keyQueue.put(ERROR_KEY);
-				} catch (InterruptedException intE) {
-					// no-op
-				}
 			}
 		}
 	}
@@ -169,12 +171,13 @@ public class ThreadedClientDataReader extends AbstractClientDataReader {
 		public void run() {
 			try {
 				while (!Thread.currentThread().isInterrupted()) {
-					 Key key = keyQueue.poll();
-					 if (key == null) {
-						 Thread.sleep(10);
-						 log.debug("Waiting for key");
-						 continue;
-					 }
+//					 Key key = keyQueue.poll();
+//					 if (key == null) {
+//						 Thread.sleep(10);
+//						 log.debug("Waiting for key");
+//						 continue;
+//					 }
+					 Key key = keyQueue.take();
 					 if (key.bucket() == STOP_STRING) {
 						 break;
 					 }
