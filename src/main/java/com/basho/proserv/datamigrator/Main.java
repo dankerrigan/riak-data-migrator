@@ -9,6 +9,8 @@ import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.basho.proserv.datamigrator.riak.Connection;
 
@@ -262,9 +264,13 @@ public class Main {
 			config.setQueueSize(queueSize);
 		}
 		
-		//Verbose output
+		//Verbose output - now default
 		if (cmd.hasOption("v")) {
 			config.setVerboseStatus(true);
+		}
+		// Turn off verbose output
+		if (cmd.hasOption("s")) {
+			config.setVerboseStatus(false);
 		}
 		
 		if (cmd.hasOption("riakworkercount")) {
@@ -451,10 +457,15 @@ public class Main {
 	}
 	
 	private static void printSummary(Summary summary, String title) {
+		Logger log = LoggerFactory.getLogger("status");
+		
 		Map<String, Long[]> bucketStats = summary.getStatistics();
 		System.out.println();
 		System.out.println(title);
-		System.out.println(String.format("%15s%12s%12s%12s%12s%10s","Bucket","Objects","Seconds","Objs/Sec","Size/KB","Val. Err."));
+		log.info(title);
+		String header = String.format("%15s%12s%12s%12s%12s%10s","Bucket","Objects","Seconds","Objs/Sec","Size/KB","Val. Err.");
+		System.out.println(header);
+		log.info(header);
 		long totalRecords = 0;
 		long totalTime = 0;
 		long totalSize = 0;
@@ -490,6 +501,7 @@ public class Main {
 						count_time[3]);
 			}
 			System.out.println(line);
+			log.info(line);
 		}
 		String line = String.format("%15s%12d%12.1f%12.1f%12d%10d",
 				String.format("Total: %d", summary.bucketNames().size()),
@@ -500,6 +512,7 @@ public class Main {
 				totalValueErrors
 				);
 		System.out.println(line);
+		log.info(line);
 	}
 	
 	private static CommandLine parseCommandLine(Options options, String[] args) throws ParseException {
@@ -522,7 +535,8 @@ public class Main {
 		options.addOption("c", true, "Specify a file containing Riak Cluster Host Names");
 		options.addOption("p", true, "Specify Riak PB Port");
 		options.addOption("H", true, "Specify Riak HTTP Port");
-		options.addOption("v", false, "Output verbose status output to the command line");
+		options.addOption("v", false, "Output verbose status output to the command line (default)");
+		options.addOption("s", true, "Suppress normal verbose output");
 		options.addOption("k", false, "Dump keys to file.  Cannot be used with l, d");
 		options.addOption("t", false, "Download bucket properties");
 		options.addOption("q", true, "Set the queue Size");

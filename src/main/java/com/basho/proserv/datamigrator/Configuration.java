@@ -40,7 +40,7 @@ public class Configuration {
 	
 	private Set<String> bucketNames = new HashSet<String>();
 	
-	private boolean verboseStatus = false;
+	private boolean verboseStatus = true;
 	private boolean resetVClock = false;
 	
 	private int riakWorkerCount = Runtime.getRuntime().availableProcessors() * RIAK_WORKER_MULTIPLIER;

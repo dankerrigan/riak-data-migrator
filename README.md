@@ -46,13 +46,13 @@ To transfer data from one Riak cluster to another:
 Downloading:
 ------------------------
 You can download the ready to run jar file at:
-http://ps-tools.data.riakcs.net:8080/riak-data-migrator-0.2.3-bin.tar.gz
+http://ps-tools.data.riakcs.net:8080/riak-data-migrator-0.2.4-bin.tar.gz
 
 After downloading, unzip/untar it, and it's ready to run from its directory.
 ```bash
-tar -xvzf riak-data-migrator-0.2.3-bin.tar.gz
-cd riak-data-migrator-0.2.3
-java -jar riak-data-migrator-0.2.3.jar [options]
+tar -xvzf riak-data-migrator-0.2.4-bin.tar.gz
+cd riak-data-migrator-0.2.4
+java -jar riak-data-migrator-0.2.4.jar [options]
 ```
 
 Building from source:
@@ -67,12 +67,12 @@ mvn package
 ```
 
     The compiled .jar file is located in the ```target/``` directory.
-    The usable binary file is ```riak-data-migrator-0.2.3-bin.tar.gz```
+    The usable binary file is ```riak-data-migrator-0.2.4-bin.tar.gz```
 
 Usage:
 ------------------------
 Usage:  
-```java -jar riak-data-migrator-0.2.3.jar [options]```
+```java -jar riak-data-migrator-0.2.4.jar [options]```
 
 Options:
 ```
@@ -109,7 +109,8 @@ Concurrency and Misc Settings
   to Riak (defaults to: 2 * #processor_cores)
 --maxriakconnections Specify the max number of connections to maintain
   in the Riak connection pool (defaults to: 2 * workercount, see above)
--v Verbose output, shows number of ops/sec every second.
+-v Verbose output, shows number of ops/sec every second. Redundant, default.
+-s Turn off verbose output. Only final summary will be output to stdout.
 -q Specify the queue size, especially if working with larger object sizes. There are
 	at most 2 queues for Load/Dump operations.
 	
@@ -127,25 +128,25 @@ Copy Settings
 Examples:
 -------------------------
 Dump (the contents of) all buckets from Riak:  
-```java -jar riak-data-migrator-0.2.3.jar -d -r /var/riak_export -a -h 127.0.0.1 -p 8087 -H 8098```
+```java -jar riak-data-migrator-0.2.4.jar -d -r /var/riak_export -a -h 127.0.0.1 -p 8087 -H 8098```
 
 Load all buckets previously dumped back into Riak:  
-```java -jar riak-data-migrator-0.2.3.jar -l -r /var/riak-export -a -h 127.0.0.1 -p 8087 -H 8098```
+```java -jar riak-data-migrator-0.2.4.jar -l -r /var/riak-export -a -h 127.0.0.1 -p 8087 -H 8098```
 
 Dump (the contents of) buckets listed in a line delimited file from a Riak cluster:  
 <pre>
-java -jar riak-data-migrator-0.2.3.jar -d -f /home/riakadmin/buckets_to_export.txt -r \  
+java -jar riak-data-migrator-0.2.4.jar -d -f /home/riakadmin/buckets_to_export.txt -r \  
 /var/riak-export -c /home/riakadmin/riak_hosts.txt -p 8087 -H 8098
 </pre>
 
 Export only the bucket settings from a bucket named "Flights":  
-```java -jar riak-data-migrator-0.2.3.jar -d -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098```
+```java -jar riak-data-migrator-0.2.4.jar -d -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098```
 
 Load bucket settings for a bucket named "Flights":  
-```java -jar riak-data-migrator-0.2.3.jar -l -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098```
+```java -jar riak-data-migrator-0.2.4.jar -l -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098```
 
 Copy all buckets from one riak host to another:
-```java -jar riak-data-migrator-0.2.3.jar -copy -r /var/riak_export -a -h 127.0.0.1 -p 8087 --copyhost 192.168.1.100 --copypbport 8087```
+```java -jar riak-data-migrator-0.2.4.jar -copy -r /var/riak_export -a -h 127.0.0.1 -p 8087 --copyhost 192.168.1.100 --copypbport 8087```
 
 Caveats:
 ------------------------
@@ -155,3 +156,23 @@ is slow on a good day.
 any significant amount of data exists.  In this case, you have to
 explicitly specify the buckets you need want to dump using the ```-f```
 option to specify a line-delimited list of buckets in a file.  
+
+Version Notes:
+------------------------
+0.2.4
+-Verbose status output is now default
+-Added option to turn off verbose output
+-Logging of final status
+
+0.2.3
+-Changed internal message passing between threads from Riak Objects to Events for Dump, Load and Copy operations but not Delete.
+-Added the capability to transfer data directly between clusters
+-Added the capability to copy a single bucket into a new bucket for the Load or Copy operations.
+-Changed log level for retry attempts (but not max retries reached) to warn vs error.
+
+0.2.2
+-Changed message passing for Dump partially to Events
+-Added logic to count the number of value not founds (ie 404s) when reading
+-Added summary output for value not founds
+
+< 0.2.1 Ancient History
