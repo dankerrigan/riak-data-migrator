@@ -98,6 +98,14 @@ public class BucketDumper {
 		}
 		return objectCount;
 	}
+
+
+    //TODO: Implement
+    public int dumpKeysFromBucket() {
+        //key journal? readmode, use key journal as iterator, key event / datatype
+        //dumpBucket logic? except for dumping the keys, take file, give it to key journal, and pass it to the bucket process
+        return 1;
+    }
 	
 	// resume is unimplemented
 	public long dumpBucket(String bucketName, boolean resume, boolean keysOnly) {
@@ -118,6 +126,10 @@ public class BucketDumper {
 		if (this.verboseStatusOutput) {
 			System.out.println("\nDumping bucket " + bucketName);
 		}
+
+        //keyevent
+        //riakevent
+
 		
 		long objectCount = 0;
 		long valueErrorCount = 0;
