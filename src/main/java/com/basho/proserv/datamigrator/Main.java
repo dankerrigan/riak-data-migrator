@@ -209,18 +209,31 @@ public class Main {
 				System.exit(1);
 			}
 		}
+
+        // Dump from a list of buckets/keys
+        if (cmd.hasOption("K")) {
+            try {
+                String fileName = cmd.getOptionValue("K");
+                config.addKeyNames(Utilities.readFileLines(fileName));
+                config.setOperation(Configuration.Operation.KEYS);
+            } catch (Exception e) {
+                System.out.println("Could not read file containing list of bucket,keys");
+                System.exit(1);
+            }
+        }
+
 		// Keys only
 		if (cmd.hasOption("k")) { // if keys only....
 			config.setOperation(Configuration.Operation.BUCKET_KEYS);
 		}
 
 		// Bucket properties transfer
-		if (cmd.hasOption("t")) { // if transfer buckets, no compatible with k
+		if (cmd.hasOption("t")) { // if transfer buckets, not compatible with k
 			config.setOperation(Configuration.Operation.BUCKET_PROPERTIES);
 		}
 		
 		
-		if (config.getBucketNames().size() == 0 && !cmd.hasOption("a")) {
+		if (config.getBucketNames().size() == 0 && !cmd.hasOption("a") && !cmd.hasOption("K")) {
 			System.out.println("No buckets specified to load");
 			System.exit(1);
 		}
@@ -396,6 +409,8 @@ public class Main {
 			dumpCount = dumper.dumpBuckets(config.getBucketNames(), config.getResume(), keysOnly);
 		} else if (config.getOperation() == Configuration.Operation.BUCKET_PROPERTIES) {
 			dumpCount = dumper.dumpBucketSettings(config.getBucketNames());
+        } else if (config.getOperation() == Configuration.Operation.KEYS) {
+            dumpCount = dumper.dumpKeys(config.getKeyNames());
 		} else {
 			dumpCount = dumper.dumpAllBuckets(config.getResume(), keysOnly);
 		}
@@ -521,6 +536,8 @@ public class Main {
 		return cmd;
 	}
 
+    //TODO: add option that reads a partial list of keys from file to backup (in same format as -k)
+
 	private static Options createOptions() {
 		Options options = new Options();
 		
@@ -531,6 +548,7 @@ public class Main {
 		options.addOption("a", false, "Load or Dump all buckets");
 		options.addOption("b", true, "Load or Dump a single bucket");
 		options.addOption("f", true, "Load or Dump a file containing bucket names");
+        options.addOption("K", true, "Load or Dump a file containing bucket names and keys");
 		options.addOption("h", true, "Specify Riak Host");
 		options.addOption("c", true, "Specify a file containing Riak Cluster Host Names");
 		options.addOption("p", true, "Specify Riak PB Port");

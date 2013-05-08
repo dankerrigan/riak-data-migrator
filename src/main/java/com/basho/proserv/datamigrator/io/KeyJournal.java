@@ -40,7 +40,9 @@ public class KeyJournal implements Iterable<Key> {
 		}
 		this.mode = mode;
 	}
-	
+
+    //TODO: Modify this file if necessary
+
 	public void write(Key key) throws IOException {
 		if (key == null) {
 			throw new IllegalArgumentException("key must not be null");
