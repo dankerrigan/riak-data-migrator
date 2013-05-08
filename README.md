@@ -87,7 +87,7 @@ Settings Transfer (optional, used with to -d or -l)
    You must also specify -d to export or -l to import, with this option.
 
 Delete a bucket
---delete Delete bucket data. Cannot be used with -d, -l, -k, or -t. Must be used with -b or -f  
+--delete Delete bucket data. Cannot be used with -d, -l, -k, or -t. Must be used with -b or -f
 
 Path (required)
 -r <path> Set the path for data to be loaded to or dumped from (path must be valid)
@@ -96,6 +96,7 @@ Bucket Options (required for -d, -k or -t)
 -a Export all buckets.
 -b <bucket name> Export a single bucket.  
 -f <bucketNameFile.txt> Export multiple buckets listed in a file (containing line-delimited bucket names)
+-K <bucketKeyNameFile.txt> Export multiple keys listed in a file (containing line-delimited bucket,key names)
 
 Cluster Addresses and Ports (required)
 -h <hostName> Specify Riak hostname. Required if a cluster host name file is not specified.  
@@ -115,7 +116,7 @@ Concurrency and Misc Settings
 	at most 2 queues for Load/Dump operations.
 	
 Copy Settings
---copy Set to Copy buckets to one cluster to another. Cannot be used with d, k, l, k or delete.
+--copy Set to Copy buckets from one cluster to another. Cannot be used with d, k, l or delete.
 --copyhost <hostName> Specify destination Riak host for *copy* operation
 --copyhostsfile <clusterNameFile.txt> Specify a file containing Cluster Host Names.  Req'd
     if a single copyhost not specified.

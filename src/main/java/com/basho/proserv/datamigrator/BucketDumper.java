@@ -2,6 +2,9 @@ package com.basho.proserv.datamigrator;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -28,6 +31,7 @@ public class BucketDumper {
 	private final File dataRoot;
 	private final boolean verboseStatusOutput;
 	private int errorCount = 0;
+    private Map<String, RiakObjectBucket> bucketMap;
 	
 	private long timerStart = System.currentTimeMillis();
 	private long previousCount = 0;
@@ -42,7 +46,8 @@ public class BucketDumper {
 		if (config.getFilePath() == null) {
 			throw new IllegalArgumentException("dataRoot cannot be null");
 		}
-		
+
+        this.bucketMap = new HashMap<String, RiakObjectBucket>();
 		this.connection = connection;
 		this.httpConnection = httpConnection;
 		this.config = config;
@@ -94,21 +99,44 @@ public class BucketDumper {
 		}
 		int objectCount = 0;
 		for (String bucketName : bucketNames) {
-			objectCount += dumpBucket(bucketName, resume, keysOnly);
+			objectCount += dumpBucket(bucketName, null, resume, keysOnly);
 		}
 		return objectCount;
 	}
 
+    public long dumpKeys(Set<String> bucketKeyNames) {
+        if (!this.connection.connected()) {
+            log.error("Not connected to Riak");
+            return 0;
+        }
+        int objectCount = 0;
 
-    //TODO: Implement
-    public int dumpKeysFromBucket() {
-        //key journal? readmode, use key journal as iterator, key event / datatype
-        //dumpBucket logic? except for dumping the keys, take file, give it to key journal, and pass it to the bucket process
-        return 1;
+        Map<String, Set<String>> bucketKeysMap = new HashMap<String, Set<String>>();
+
+        //Scan the list and build a map
+        for (String bucketKeyName : bucketKeyNames) {
+            String[] bucketKeyNamesArr = bucketKeyName.split(",");
+
+            if (bucketKeyNamesArr.length != 2) {
+                throw new IllegalArgumentException("Key file lines must have the format: bucket,key");
+            }
+
+            if(!bucketKeysMap.containsKey(bucketKeyNamesArr[0])) {
+                Set<String> keySet = new HashSet<String>();
+                bucketKeysMap.put(bucketKeyNamesArr[0], keySet);
+            }
+
+            bucketKeysMap.get(bucketKeyNamesArr[0]).add(bucketKeyNamesArr[1]);
+        }
+
+        for (Map.Entry<String, Set<String>> aMapEntry : bucketKeysMap.entrySet()) {
+            objectCount += dumpBucket(aMapEntry.getKey(), aMapEntry.getValue() , false, false);
+        }
+        return objectCount;
     }
-	
+
 	// resume is unimplemented
-	public long dumpBucket(String bucketName, boolean resume, boolean keysOnly) {
+	public long dumpBucket(String bucketName, Set<String> keyNames, boolean resume, boolean keysOnly) {
 		if (bucketName == null || bucketName.isEmpty()) {
 			throw new IllegalArgumentException("bucketName cannot be null or empty");
 		}
@@ -126,10 +154,6 @@ public class BucketDumper {
 		if (this.verboseStatusOutput) {
 			System.out.println("\nDumping bucket " + bucketName);
 		}
-
-        //keyevent
-        //riakevent
-
 		
 		long objectCount = 0;
 		long valueErrorCount = 0;
@@ -144,7 +168,7 @@ public class BucketDumper {
 		long keyCount = 0;
 		
 		try {
-			keyCount = this.dumpBucketKeys(bucketName, keyPath);
+			keyCount = this.dumpBucketKeys(bucketName, keyNames, keyPath);
 		} catch (IOException e){
 			log.error("Error listing keys for bucket " + bucketName, e);
 			this.summary.addStatistic(bucketName, -2l, 0l, 0l, 0l);
@@ -225,18 +249,22 @@ public class BucketDumper {
 		return errorCount;
 	}
 	
-	public long dumpBucketKeys(String bucketName, File filePath) throws IOException {
+	public long dumpBucketKeys(String bucketName, Iterable<String> keyNames, File filePath) throws IOException {
 		KeyJournal keyJournal = new KeyJournal(filePath, KeyJournal.Mode.WRITE);
 		long keyCount = 0;
-		Iterable<String> keys = this.connection.riakClient.listKeys(bucketName);
-		for (String keyString : keys) {
+
+        if (keyNames == null) {
+		    keyNames = this.connection.riakClient.listKeys(bucketName);
+        }
+
+		for (String keyString : keyNames) {
 			keyJournal.write(bucketName, keyString);
 			++keyCount;
 		}
 		keyJournal.close();
 		return keyCount;
 	}
-	
+
 	private void saveBucketSettings(String bucketName, File path) {
 		File xmlPath = RiakBucketProperties.createBucketSettingsFile(path);
 		RiakBucketProperties riakBucketProps = new RiakBucketProperties(this.httpConnection);
@@ -275,8 +303,15 @@ public class BucketDumper {
 	}
 	
 	private RiakObjectBucket createBucket(String bucketName) {
-		String bucketRootPath = this.createBucketPath(bucketName);
-		File bucketRoot = new File(bucketRootPath);
-		return new RiakObjectBucket(bucketRoot, RiakObjectBucket.BucketMode.WRITE, this.config);
+        RiakObjectBucket aRiakObjectBucket = this.bucketMap.get(bucketName);
+
+        if (aRiakObjectBucket == null) {
+            String bucketRootPath = this.createBucketPath(bucketName);
+            File bucketRoot = new File(bucketRootPath);
+            aRiakObjectBucket = new RiakObjectBucket(bucketRoot, RiakObjectBucket.BucketMode.WRITE, this.config);
+            this.bucketMap.put(bucketName, aRiakObjectBucket);
+        }
+
+		return aRiakObjectBucket;
 	}
 }
