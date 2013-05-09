@@ -210,17 +210,17 @@ public class Main {
 			}
 		}
 
-        // Dump from a list of buckets/keys
-        if (cmd.hasOption("K")) {
-            try {
-                String fileName = cmd.getOptionValue("K");
-                config.addKeyNames(Utilities.readFileLines(fileName));
-                config.setOperation(Configuration.Operation.KEYS);
-            } catch (Exception e) {
-                System.out.println("Could not read file containing list of bucket,keys");
-                System.exit(1);
-            }
-        }
+		// Dump from a list of buckets/keys
+		if (cmd.hasOption("K")) {
+			try {
+				String fileName = cmd.getOptionValue("K");
+				config.addKeyNames(Utilities.readFileLines(fileName));
+				config.setOperation(Configuration.Operation.KEYS);
+			} catch (Exception e) {
+				System.out.println("Could not read file containing list of bucket,keys");
+				System.exit(1);
+			}
+		}
 
 		// Keys only
 		if (cmd.hasOption("k")) { // if keys only....
@@ -409,8 +409,8 @@ public class Main {
 			dumpCount = dumper.dumpBuckets(config.getBucketNames(), config.getResume(), keysOnly);
 		} else if (config.getOperation() == Configuration.Operation.BUCKET_PROPERTIES) {
 			dumpCount = dumper.dumpBucketSettings(config.getBucketNames());
-        } else if (config.getOperation() == Configuration.Operation.KEYS) {
-            dumpCount = dumper.dumpKeys(config.getKeyNames());
+		} else if (config.getOperation() == Configuration.Operation.KEYS) {
+			dumpCount = dumper.dumpKeys(config.getKeyNames());
 		} else {
 			dumpCount = dumper.dumpAllBuckets(config.getResume(), keysOnly);
 		}
@@ -548,7 +548,7 @@ public class Main {
 		options.addOption("a", false, "Load or Dump all buckets");
 		options.addOption("b", true, "Load or Dump a single bucket");
 		options.addOption("f", true, "Load or Dump a file containing bucket names");
-        options.addOption("K", true, "Load or Dump a file containing bucket names and keys");
+		options.addOption("K", true, "Load or Dump a file containing bucket names and keys");
 		options.addOption("h", true, "Specify Riak Host");
 		options.addOption("c", true, "Specify a file containing Riak Cluster Host Names");
 		options.addOption("p", true, "Specify Riak PB Port");

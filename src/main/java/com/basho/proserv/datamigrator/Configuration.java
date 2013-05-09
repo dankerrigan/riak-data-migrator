@@ -18,7 +18,7 @@ public class Configuration {
 								   BUCKETS, 
 								   ALL_KEYS, 
 								   BUCKET_KEYS,
-                                   KEYS,
+								   KEYS,
 								   BUCKET_PROPERTIES,
 								   DELETE_BUCKETS,
 								   COPY_ALL,
@@ -40,7 +40,7 @@ public class Configuration {
 	private int queueSize = DEFAULT_QUEUE_SIZE;
 	
 	private Set<String> bucketNames = new HashSet<String>();
-    private Set<String> keyNames = new HashSet<String>();
+	private Set<String> keyNames = new HashSet<String>();
 	
 	private boolean verboseStatus = true;
 	private boolean resetVClock = false;
@@ -139,16 +139,16 @@ public class Configuration {
 	public void addBucketNames(Collection<String> buckets) {
 		this.bucketNames.addAll(buckets);		
 	}
-    public Set<String> getBucketNames() {
-        return this.bucketNames;
-    }
+	public Set<String> getBucketNames() {
+		return this.bucketNames;
+	}
 
-    public void addKeyNames(Collection<String> keys) {
-        this.keyNames.addAll(keys);
-    }
-    public Set<String> getKeyNames() {
-        return this.keyNames;
-    }
+	public void addKeyNames(Collection<String> keys) {
+		this.keyNames.addAll(keys);
+	}
+	public Set<String> getKeyNames() {
+		return this.keyNames;
+	}
 	
 	public void setVerboseStatus(boolean verboseStatus) {
 		this.verboseStatus = verboseStatus;
