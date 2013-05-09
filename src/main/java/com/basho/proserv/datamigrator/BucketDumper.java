@@ -183,8 +183,8 @@ public class BucketDumper {
 		}
 		if (keysOnly) {
 			String bucketNameKeys= String.format("%s keys", bucketName);
-			this.summary.addStatistic(bucketNameKeys, writeSourceKeyJournal.getKeyCount(), System.currentTimeMillis()-start, 0l, 0l);
-			return writeSourceKeyJournal.getKeyCount();
+			this.summary.addStatistic(bucketNameKeys, writeSourceKeyJournal.getWriteCount(), System.currentTimeMillis()-start, 0l, 0l);
+			return writeSourceKeyJournal.getWriteCount();
 		}
 				
 //		this.saveBucketSettings(bucketName, dumpBucket.getFileRoot());
@@ -211,7 +211,7 @@ public class BucketDumper {
 				}
 
 				if (this.verboseStatusOutput) {
-					this.printStatus(writeSourceKeyJournal.getKeyCount(), objectCount, false);
+					this.printStatus(writeSourceKeyJournal.getWriteCount(), objectCount, false);
 				}	
 			}
 		} catch (IOException e) {
@@ -238,7 +238,7 @@ public class BucketDumper {
 		}
 		
 		if (this.verboseStatusOutput) {
-			this.printStatus(writeSourceKeyJournal.getKeyCount(), objectCount, true);
+			this.printStatus(writeSourceKeyJournal.getWriteCount(), objectCount, true);
 		}
 		
 		return objectCount;

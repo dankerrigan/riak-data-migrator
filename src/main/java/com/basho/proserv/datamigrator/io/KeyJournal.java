@@ -21,7 +21,7 @@ public class KeyJournal implements Iterable<Key> {
 	private final Mode mode;
 	private final BufferedWriter writer;
 	private final BufferedReader reader;
-	private long keyCount;
+	private long writeCount;
 	private boolean closed = false;
 	
 	public KeyJournal(File path, Mode mode) {
@@ -40,7 +40,7 @@ public class KeyJournal implements Iterable<Key> {
 			throw new IllegalArgumentException("Could not open " + path.getAbsolutePath());
 		}
 		this.mode = mode;
-		this.keyCount = 0;
+		this.writeCount = 0;
 	}
 
 	public void populate(String bucketName, Iterable<String> keys) throws IOException {
@@ -49,11 +49,11 @@ public class KeyJournal implements Iterable<Key> {
 		}
 	}
 
-	public long getKeyCount() {
+	public long getWriteCount() {
 		if (mode == Mode.READ) {
 			throw new IllegalArgumentException ("KeyJournal is in READ mode and cannot determine keyCount");
 		}
-		return this.keyCount;
+		return this.writeCount;
 	}
 
 	public void write(Key key) throws IOException {
@@ -71,7 +71,7 @@ public class KeyJournal implements Iterable<Key> {
 			throw new IllegalArgumentException("bucket and key must not be null");
 		}
 		this.writer.write((Utilities.urlEncode(bucket) + "," + Utilities.urlEncode(key) + "\n"));
-		this.keyCount++;
+		this.writeCount++;
 	}
 	
 	public void write(RiakObject riakObject) throws IOException {

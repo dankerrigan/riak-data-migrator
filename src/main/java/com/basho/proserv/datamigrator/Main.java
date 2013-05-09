@@ -536,8 +536,6 @@ public class Main {
 		return cmd;
 	}
 
-    //TODO: add option that reads a partial list of keys from file to backup (in same format as -k)
-
 	private static Options createOptions() {
 		Options options = new Options();
 		
