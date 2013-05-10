@@ -87,7 +87,7 @@ Settings Transfer (optional, used with to -d or -l)
    You must also specify -d to export or -l to import, with this option.
 
 Delete a bucket
---delete Delete bucket data. Cannot be used with -d, -l, -k, or -t. Must be used with -b or -f  
+--delete Delete bucket data. Cannot be used with -d, -l, -k, or -t. Must be used with -b or -f
 
 Path (required)
 -r <path> Set the path for data to be loaded to or dumped from (path must be valid)
@@ -96,6 +96,7 @@ Bucket Options (required for -d, -k or -t)
 -a Export all buckets.
 -b <bucket name> Export a single bucket.  
 -f <bucketNameFile.txt> Export multiple buckets listed in a file (containing line-delimited bucket names)
+--loadkeys <bucketKeyNameFile.txt> Export multiple keys listed in a file (containing line-delimited bucket,key names)
 
 Cluster Addresses and Ports (required)
 -h <hostName> Specify Riak hostname. Required if a cluster host name file is not specified.  
@@ -115,7 +116,7 @@ Concurrency and Misc Settings
 	at most 2 queues for Load/Dump operations.
 	
 Copy Settings
---copy Set to Copy buckets to one cluster to another. Cannot be used with d, k, l, k or delete.
+--copy Set to Copy buckets from one cluster to another. Cannot be used with d, k, l or delete.
 --copyhost <hostName> Specify destination Riak host for *copy* operation
 --copyhostsfile <clusterNameFile.txt> Specify a file containing Cluster Host Names.  Req'd
     if a single copyhost not specified.
@@ -128,25 +129,40 @@ Copy Settings
 Examples:
 -------------------------
 Dump (the contents of) all buckets from Riak:  
-```java -jar riak-data-migrator-0.2.4.jar -d -r /var/riak_export -a -h 127.0.0.1 -p 8087 -H 8098```
+```
+java -jar riak-data-migrator-0.2.4.jar -d -r /var/riak_export -a -h 127.0.0.1 -p 8087 -H 8098
+```
+
+Dump a subset of keys from Riak:
+```
+java -jar riak-data-migrator-0.2.4.jar -d -r /var/riak_export --loadkeys bucketKeyNameFile.txt -h 127.0.0.1 -p 8087 -H 8098
+```
 
 Load all buckets previously dumped back into Riak:  
-```java -jar riak-data-migrator-0.2.4.jar -l -r /var/riak-export -a -h 127.0.0.1 -p 8087 -H 8098```
+```
+java -jar riak-data-migrator-0.2.4.jar -l -r /var/riak-export -a -h 127.0.0.1 -p 8087 -H 8098
+```
 
 Dump (the contents of) buckets listed in a line delimited file from a Riak cluster:  
-<pre>
+```
 java -jar riak-data-migrator-0.2.4.jar -d -f /home/riakadmin/buckets_to_export.txt -r \  
 /var/riak-export -c /home/riakadmin/riak_hosts.txt -p 8087 -H 8098
-</pre>
+```
 
 Export only the bucket settings from a bucket named "Flights":  
-```java -jar riak-data-migrator-0.2.4.jar -d -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098```
+```
+java -jar riak-data-migrator-0.2.4.jar -d -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098
+```
 
 Load bucket settings for a bucket named "Flights":  
-```java -jar riak-data-migrator-0.2.4.jar -l -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098```
+```
+java -jar riak-data-migrator-0.2.4.jar -l -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098
+```
 
 Copy all buckets from one riak host to another:
-```java -jar riak-data-migrator-0.2.4.jar -copy -r /var/riak_export -a -h 127.0.0.1 -p 8087 --copyhost 192.168.1.100 --copypbport 8087```
+```
+java -jar riak-data-migrator-0.2.4.jar -copy -r /var/riak_export -a -h 127.0.0.1 -p 8087 --copyhost 192.168.1.100 --copypbport 8087
+```
 
 Caveats:
 ------------------------
