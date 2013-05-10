@@ -92,7 +92,7 @@ public class Main {
 			runLoader(config);
 		}
 
-		if (cmd.hasOption("d") || cmd.hasOption("k") || (cmd.hasOption("d") && cmd.hasOption("t"))) {
+		if (cmd.hasOption("d") || cmd.hasOption("loadkeys") || (cmd.hasOption("d") && cmd.hasOption("t"))) {
 			runDumper(config);
 		}
 		
@@ -211,9 +211,9 @@ public class Main {
 		}
 
 		// Dump from a list of buckets/keys
-		if (cmd.hasOption("K")) {
+		if (cmd.hasOption("loadkeys")) {
 			try {
-				String fileName = cmd.getOptionValue("K");
+				String fileName = cmd.getOptionValue("loadkeys");
 				config.addKeyNames(Utilities.readFileLines(fileName));
 				config.setOperation(Configuration.Operation.KEYS);
 			} catch (Exception e) {
@@ -233,7 +233,7 @@ public class Main {
 		}
 		
 		
-		if (config.getBucketNames().size() == 0 && !cmd.hasOption("a") && !cmd.hasOption("K")) {
+		if (config.getBucketNames().size() == 0 && !cmd.hasOption("a") && !cmd.hasOption("loadkeys")) {
 			System.out.println("No buckets specified to load");
 			System.exit(1);
 		}
@@ -546,7 +546,7 @@ public class Main {
 		options.addOption("a", false, "Load or Dump all buckets");
 		options.addOption("b", true, "Load or Dump a single bucket");
 		options.addOption("f", true, "Load or Dump a file containing bucket names");
-		options.addOption("K", true, "Load or Dump a file containing bucket names and keys");
+		options.addOption("loadkeys", true, "Load or Dump a file containing bucket names and keys");
 		options.addOption("h", true, "Specify Riak Host");
 		options.addOption("c", true, "Specify a file containing Riak Cluster Host Names");
 		options.addOption("p", true, "Specify Riak PB Port");
