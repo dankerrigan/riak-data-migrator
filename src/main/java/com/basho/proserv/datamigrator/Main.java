@@ -167,7 +167,7 @@ public class Main {
 				System.exit(1);
 			}
 		} else {
-			System.out.println("Port not specified, using the default: 8087");
+			System.out.println("PB Port not specified, using the default: 8087");
 		}
 		
 		// HTTP Port
