@@ -135,7 +135,7 @@ java -jar riak-data-migrator-0.2.4.jar -d -r /var/riak_export -a -h 127.0.0.1 -p
 
 Dump a subset of keys from Riak:
 ```
-java -jar riak-data-migrator-0.2.4.jar -d -r /var/riak_export -loadkeys bucketKeyNameFile.txt -h 127.0.0.1 -p 8087 -H 8098
+java -jar riak-data-migrator-0.2.4.jar -d -r /var/riak_export --loadkeys bucketKeyNameFile.txt -h 127.0.0.1 -p 8087 -H 8098
 ```
 
 Load all buckets previously dumped back into Riak:  
