@@ -37,6 +37,8 @@ public class BucketDelete {
 		for (String bucketName : bucketNames) {
 			objectCount += this.deleteBucket(bucketName);
 		}
+
+		this.connection.close();
 		
 		return objectCount;
 	}
@@ -95,8 +97,6 @@ public class BucketDelete {
 		if (this.verboseOutput) {
 			this.printStatus(keyCount, objectCount, true);
 		}
-		
-		this.connection.close();
 		
 		return objectCount;
 	}

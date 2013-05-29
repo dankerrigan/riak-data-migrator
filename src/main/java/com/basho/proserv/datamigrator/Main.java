@@ -102,7 +102,7 @@ public class Main {
 		Configuration config = new Configuration();
 		
 		// Data path
-		if (!cmd.hasOption("copy")) {
+		if (!cmd.hasOption("copy") && !cmd.hasOption("delete")) {
 			if (cmd.hasOption("r")) {
 				File dataPath = new File(cmd.getOptionValue("r"));
 				if (!dataPath.exists()) {
