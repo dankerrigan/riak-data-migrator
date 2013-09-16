@@ -41,7 +41,10 @@ To transfer data from one Riak cluster to another:
     on a bucket.
 3. Export the contents of a bucket (Riak objects) using the ```-d``` option, to files on disk (the objects will be stored in 
     the binary [ProtoBuf](http://docs.basho.com/riak/latest/references/apis/protocol-buffers/) format)
-4. Load the Riak objects from the exported files into the target cluster using the ```-l``` option.
+4. (Optional, Search-only) If backing up Search-indexed buckets using Data Migrator versions <= 0.2.5, go into the exported
+   data directory and delete the internal-use-only indexing buckets (```rm -rf _rsid_*```). See 
+   https://github.com/basho/riak-data-migrator/issues/4 for explanation.
+5. Load the Riak objects from the exported files into the target cluster using the ```-l``` option.
 
 Downloading:
 ------------------------
@@ -166,32 +169,33 @@ java -jar riak-data-migrator-0.2.5.jar -copy -r /var/riak_export -a -h 127.0.0.1
 
 Caveats:
 ------------------------
--This app depends on the key listing operation in the Riak client which
+ - When backing up 
+ - This app depends on the key listing operation in the Riak client which
 is slow on a good day.  
--The Riak memory backend bucket listing operating tends to timeout if
+ - The Riak memory backend bucket listing operating tends to timeout if
 any significant amount of data exists.  In this case, you have to
 explicitly specify the buckets you need want to dump using the ```-f```
 option to specify a line-delimited list of buckets in a file.  
 
+
 Version Notes:
 ------------------------
 0.2.5
--Added option to dump a subset of keys
+ - Added option to dump a subset of keys
 
 0.2.4
--Verbose status output is now default
--Added option to turn off verbose output
--Logging of final status
+ - Verbose status output is now default
+ - Added option to turn off verbose output
+ - Logging of final status
 
 0.2.3
--Changed internal message passing between threads from Riak Objects to Events for Dump, Load and Copy operations but not Delete.
--Added the capability to transfer data directly between clusters
--Added the capability to copy a single bucket into a new bucket for the Load or Copy operations.
--Changed log level for retry attempts (but not max retries reached) to warn vs error.
+ - Changed internal message passing between threads from Riak Objects to Events for Dump, Load and Copy operations but not Delete.
+ - Added the capability to transfer data directly between clusters
+ - Added the capability to copy a single bucket into a new bucket for the Load or Copy operations.
+ - Changed log level for retry attempts (but not max retries reached) to warn vs error.
 
 0.2.2
--Changed message passing for Dump partially to Events
--Added logic to count the number of value not founds (ie 404s) when reading
--Added summary output for value not founds
+ - Changed message passing for Dump partially to Events
+ - Added logic to count the number of value not founds (ie 404s) when reading
+ - Added summary output for value not founds
 
-< 0.2.1 Ancient History
