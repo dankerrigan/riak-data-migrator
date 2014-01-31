@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import com.basho.proserv.datamigrator.events.Event;
 import com.basho.proserv.datamigrator.io.Key;
+import com.basho.proserv.datamigrator.io.IKeyJournal;
 import com.basho.proserv.datamigrator.io.KeyJournal;
 import com.basho.proserv.datamigrator.io.RiakObjectBucket;
 import com.basho.proserv.datamigrator.riak.AbstractClientDataWriter;
@@ -125,8 +126,8 @@ public class BucketLoader {
 				new ThreadedClientDataWriter(connection, clientWriterFactory, dumpBucket,
 						this.config.getRiakWorkerCount(), this.config.getQueueSize());
 
-		KeyJournal keyJournal = new KeyJournal(
-				KeyJournal.createKeyPathFromPath(new File(this.createBucketPath(bucketName, true) + "/keys" ), true), 
+		IKeyJournal keyJournal = new KeyJournal(
+				KeyJournal.createKeyPathFromPath(new File(this.createBucketPath(bucketName, true) + "/keys" ), true),
 					KeyJournal.Mode.WRITE);
 		
 		try {

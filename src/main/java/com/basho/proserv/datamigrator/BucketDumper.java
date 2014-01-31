@@ -2,8 +2,6 @@ package com.basho.proserv.datamigrator;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -12,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import com.basho.proserv.datamigrator.events.Event;
 import com.basho.proserv.datamigrator.events.RiakObjectEvent;
+import com.basho.proserv.datamigrator.io.IKeyJournal;
 import com.basho.proserv.datamigrator.io.KeyJournal;
 import com.basho.proserv.datamigrator.io.RiakObjectBucket;
 import com.basho.proserv.datamigrator.riak.AbstractClientDataReader;
@@ -102,40 +101,24 @@ public class BucketDumper {
 		return objectCount;
 	}
 
-	public long dumpKeys(Set<String> bucketKeyNames) {
-		if (!this.connection.connected()) {
-			log.error("Not connected to Riak");
-			return 0;
-		}
-		int objectCount = 0;
+    public long dumpKeys(IKeyJournal keyJournal) {
+        if (!this.connection.connected()) {
+            log.error("Not connected to Riak");
+            return 0;
+        }
+        int objectCount = 0;
 
-		Map<String, Set<String>> bucketKeysMap = new HashMap<String, Set<String>>();
+        Map<String, KeyJournal> keyJournals = Utilities.splitKeys(this.dataRoot, keyJournal);
 
-		//Scan the list and build a map
-		for (String bucketKeyName : bucketKeyNames) {
-			String[] bucketKeyNamesArr = bucketKeyName.split(",");
+        for (String bucketName : keyJournals.keySet()) {
+            objectCount += dumpBucket(bucketName, keyJournals.get(bucketName), false, false);
+        }
 
-			if (bucketKeyNamesArr.length != 2) {
-				throw new IllegalArgumentException("Key file lines must have the format: bucket,key");
-			}
-
-			if(!bucketKeysMap.containsKey(bucketKeyNamesArr[0])) {
-				Set<String> keySet = new HashSet<String>();
-				bucketKeysMap.put(bucketKeyNamesArr[0], keySet);
-			}
-
-			bucketKeysMap.get(bucketKeyNamesArr[0]).add(bucketKeyNamesArr[1]);
-		}
-
-		for (Map.Entry<String, Set<String>> aMapEntry : bucketKeysMap.entrySet()) {
-
-			objectCount += dumpBucket(aMapEntry.getKey(), aMapEntry.getValue() , false, false);
-		}
-		return objectCount;
-	}
+        return objectCount;
+    }
 
 	// resume is unimplemented
-    public long dumpBucket(String bucketName, Iterable<String> keys, boolean resume, boolean keysOnly) {
+    public long dumpBucket(String bucketName, KeyJournal keys, boolean resume, boolean keysOnly) {
 		if (bucketName == null || bucketName.isEmpty()) {
 			throw new IllegalArgumentException("bucketName cannot be null or empty");
 		}
@@ -164,29 +147,32 @@ public class BucketDumper {
 		File keyPath = new File(dumpBucket.getFileRoot().getAbsoluteFile() + "/bucketkeys.keys");
 		File dumpedKeyPath = new File(dumpBucket.getFileRoot().getAbsoluteFile() + "/dumpedkeys.keys");
 
-		KeyJournal writeSourceKeyJournal = new KeyJournal(keyPath, KeyJournal.Mode.WRITE);
-		KeyJournal readSourceKeyJournal = new KeyJournal(keyPath, KeyJournal.Mode.READ);
-		KeyJournal writeDestinationKeyJournal = new KeyJournal(dumpedKeyPath, KeyJournal.Mode.WRITE);
+        IKeyJournal writeDestinationKeyJournal = new KeyJournal(dumpedKeyPath, KeyJournal.Mode.WRITE);
 
 		try {
 			// If no key subset is specified, get the entire key set
 			if (keys == null) {
-				keys = this.connection.riakClient.listKeys(bucketName);
-			}
-
-			writeSourceKeyJournal.populate(bucketName, keys);
-			writeSourceKeyJournal.close();
+                IKeyJournal writeSourceKeyJournal = new KeyJournal(keyPath, KeyJournal.Mode.WRITE);
+				Iterable<String> listedKeys = this.connection.riakClient.listKeys(bucketName);
+                writeSourceKeyJournal.populate(bucketName, listedKeys);
+                writeSourceKeyJournal.close();
+                if (this.verboseStatusOutput) {
+                    this.printStatus(writeSourceKeyJournal.getKeyCount(), objectCount, false);
+                }
+                if (keysOnly) {
+                    String bucketNameKeys= String.format("%s keys", bucketName);
+                    this.summary.addStatistic(bucketNameKeys, writeSourceKeyJournal.getKeyCount(), System.currentTimeMillis()-start, 0l, 0l);
+                    return writeSourceKeyJournal.getKeyCount();
+                }
+            }
 		} catch (IOException e){
 			log.error("Error listing keys for bucket " + bucketName, e);
 			this.summary.addStatistic(bucketName, -2l, 0l, 0l, 0l);
 			return 0;
 		}
-		if (keysOnly) {
-			String bucketNameKeys= String.format("%s keys", bucketName);
-			this.summary.addStatistic(bucketNameKeys, writeSourceKeyJournal.getWriteCount(), System.currentTimeMillis()-start, 0l, 0l);
-			return writeSourceKeyJournal.getWriteCount();
-		}
-				
+
+        IKeyJournal readSourceKeyJournal = keys == null ? new KeyJournal(keyPath, KeyJournal.Mode.READ) : keys;
+
 //		this.saveBucketSettings(bucketName, dumpBucket.getFileRoot());
 		
 		try {
@@ -210,9 +196,7 @@ public class BucketDumper {
 					throw new IOException(event.asIoErrorEvent().ioException());
 				}
 
-				if (this.verboseStatusOutput) {
-					this.printStatus(writeSourceKeyJournal.getWriteCount(), objectCount, false);
-				}	
+
 			}
 		} catch (IOException e) {
 			log.error("Riak error dumping objects for bucket: " + bucketName, e);
@@ -238,7 +222,7 @@ public class BucketDumper {
 		}
 		
 		if (this.verboseStatusOutput) {
-			this.printStatus(writeSourceKeyJournal.getWriteCount(), objectCount, true);
+			this.printStatus(readSourceKeyJournal.getKeyCount(), objectCount, true);
 		}
 		
 		return objectCount;

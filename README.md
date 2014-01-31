@@ -41,7 +41,7 @@ To transfer data from one Riak cluster to another:
     on a bucket.
 3. Export the contents of a bucket (Riak objects) using the ```-d``` option, to files on disk (the objects will be stored in 
     the binary [ProtoBuf](http://docs.basho.com/riak/latest/references/apis/protocol-buffers/) format)
-4. (Optional, Search-only) If backing up Search-indexed buckets using Data Migrator versions <= 0.2.5, go into the exported
+4. (Optional, Search-only) If backing up Search-indexed buckets using Data Migrator versions <= 0.2.6, go into the exported
    data directory and delete the internal-use-only indexing buckets (```rm -rf _rsid_*```). See 
    https://github.com/basho/riak-data-migrator/issues/4 for explanation.
 5. Load the Riak objects from the exported files into the target cluster using the ```-l``` option.
@@ -49,13 +49,13 @@ To transfer data from one Riak cluster to another:
 Downloading:
 ------------------------
 You can download the ready to run jar file at:
-http://ps-tools.data.riakcs.net:8080/riak-data-migrator-0.2.5-bin.tar.gz
+http://ps-tools.data.riakcs.net:8080/riak-data-migrator-0.2.6-bin.tar.gz
 
 After downloading, unzip/untar it, and it's ready to run from its directory.
 ```bash
-tar -xvzf riak-data-migrator-0.2.5-bin.tar.gz
-cd riak-data-migrator-0.2.5
-java -jar riak-data-migrator-0.2.5.jar [options]
+tar -xvzf riak-data-migrator-0.2.6-bin.tar.gz
+cd riak-data-migrator-0.2.6
+java -jar riak-data-migrator-0.2.6.jar [options]
 ```
 
 Building from source:
@@ -70,14 +70,16 @@ mvn package
 ```
 
     The compiled .jar file is located in the ```target/``` directory.
-    The usable binary file is ```riak-data-migrator-0.2.5-bin.tar.gz```
+    The usable binary file is ```riak-data-migrator-0.2.6-bin.tar.gz```
 
 Usage:
 ------------------------
 Usage:  
-```java -jar riak-data-migrator-0.2.5.jar [options]```
+
+```java -jar riak-data-migrator-0.2.6.jar [options]```
 
 Options:
+
 ```
 Data Transfer (required, one of: d, l, k, or delete)
 -d Export (Dump) the contents bucket(s) (keys and objects), in ProtoBuf format, to files
@@ -99,7 +101,8 @@ Bucket Options (required for -d, -k or -t)
 -a Export all buckets.
 -b <bucket name> Export a single bucket.  
 -f <bucketNameFile.txt> Export multiple buckets listed in a file (containing line-delimited bucket names)
---loadkeys <bucketKeyNameFile.txt> Export multiple keys listed in a file (containing line-delimited bucket,key names)
+--loadkeys <bucketKeyNameFile.txt> Specify multiple keys listed in a file (containing line-delimited bucket,key names). Not functional with the -l option.
+--bucketkeys <keysFiles.txt> Specify keys listed in a line-delimited file in conjunction with the -b option to specify which bucket the keys belong to. Not functional with the -l option.
 
 Cluster Addresses and Ports (required)
 -h <hostName> Specify Riak hostname. Required if a cluster host name file is not specified.  
@@ -131,41 +134,70 @@ Copy Settings
 
 Examples:
 -------------------------
+
 Dump (the contents of) all buckets from Riak:  
+
 ```
-java -jar riak-data-migrator-0.2.5.jar -d -r /var/riak_export -a -h 127.0.0.1 -p 8087 -H 8098
+java -jar riak-data-migrator-0.2.6.jar -d -r /var/riak_export -a -h 127.0.0.1 -p 8087 -H 8098
 ```
 
 Dump a subset of keys from Riak:
+
 ```
-java -jar riak-data-migrator-0.2.5.jar -d -r /var/riak_export --loadkeys bucketKeyNameFile.txt -h 127.0.0.1 -p 8087 -H 8098
+java -jar riak-data-migrator-0.2.6.jar -d -r /var/riak_export --loadkeys bucketKeyNameFile.txt -h 127.0.0.1 -p 8087 -H 8098
 ```
 
 Load all buckets previously dumped back into Riak:  
+
 ```
-java -jar riak-data-migrator-0.2.5.jar -l -r /var/riak-export -a -h 127.0.0.1 -p 8087 -H 8098
+java -jar riak-data-migrator-0.2.6.jar -l -r /var/riak-export -a -h 127.0.0.1 -p 8087 -H 8098
 ```
 
 Dump (the contents of) buckets listed in a line delimited file from a Riak cluster:  
+
 ```
-java -jar riak-data-migrator-0.2.5.jar -d -f /home/riakadmin/buckets_to_export.txt -r \
+java -jar riak-data-migrator-0.2.6.jar -d -f /home/riakadmin/buckets_to_export.txt -r \
+/var/riak-export -c /home/riakadmin/riak_hosts.txt -p 8087 -H 8098
+```
+
+Dump (then contents of) buckets based on the bucket,keys listed in a file, bucket_keys.csv:
+
+```
+java -jar riak-data-migrator-0.2.6.jar -d --loadkeys bucket_keys.txt -r \
+/var/riak-export -c /home/riakadmin/riak_hosts.txt -p 8087 -H 8098
+```
+
+Dump (then contents of) a single bucket, A_BUCKET, based on the keys listed in a file, keys.txt:
+
+```
+java -jar riak-data-migrator-0.2.6.jar -d -b A_BUCKET --bucketkeys keys.txt -r \
 /var/riak-export -c /home/riakadmin/riak_hosts.txt -p 8087 -H 8098
 ```
 
 Export only the bucket settings from a bucket named "Flights":  
+
 ```
-java -jar riak-data-migrator-0.2.5.jar -d -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098
+java -jar riak-data-migrator-0.2.6.jar -d -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098
 ```
 
 Load bucket settings for a bucket named "Flights":  
+
 ```
-java -jar riak-data-migrator-0.2.5.jar -l -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098
+java -jar riak-data-migrator-0.2.6.jar -l -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098
 ```
 
 Copy all buckets from one riak host to another:
+
 ```
-java -jar riak-data-migrator-0.2.5.jar -copy -r /var/riak_export -a -h 127.0.0.1 -p 8087 --copyhost 192.168.1.100 --copypbport 8087
+java -jar riak-data-migrator-0.2.6.jar -copy -r /var/riak_export -a -h 127.0.0.1 -p 8087 --copyhost 192.168.1.100 --copypbport 8087
 ```
+
+Copy a single bucket (A_BUCKET) to bucket (B_BUCKET) on the same host
+
+```
+java -jar riak-data-migrator-0.2.6.jar -copy -r /var/riak_export -b A_BUCKET -h 127.0.0.1 -p 8087 --copyhost 192.168.1.100 --copypbport 8087 --destinationbucket B_BUCKET
+```
+
 
 Caveats:
 ------------------------
@@ -180,6 +212,11 @@ option to specify a line-delimited list of buckets in a file.
 
 Version Notes:
 ------------------------
+0.2.6
+ - Subset of keys can now be dumped, copied, or deleted.
+ - In addition to previous capability to specify a file in bucket,key\n format, you can now just have a file with keys
+ as long as a single bucket is also specified
+
 0.2.5
  - Added option to dump a subset of keys
 

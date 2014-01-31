@@ -2,8 +2,12 @@ package com.basho.proserv.riak.datamigrator.io;
 
 import static org.junit.Assert.*;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 
+import com.basho.proserv.datamigrator.io.BucketKeyJournal;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
@@ -12,10 +16,12 @@ import com.basho.proserv.datamigrator.io.KeyJournal;
 
 public class KeyJournalTests {
 
+    @Rule
+    public TemporaryFolder tempFolder = new TemporaryFolder();
+
 	@Test
 	public void test() throws Exception {
 		int KEY_COUNT = 1000;
-		TemporaryFolder tempFolder = new TemporaryFolder();
 		
 		File keyPath = tempFolder.newFile();
 		
@@ -44,14 +50,44 @@ public class KeyJournalTests {
 		
 		assertTrue(readCount == buckets.length * keys.length);
 	}
+
+    @Test
+    public void testBucketKeyJournal() throws Exception {
+        int KEY_COUNT = 1000;
+        String TEST_BUCKET = "test_bucket";
+
+        File keyPath = tempFolder.newFile();
+        BufferedWriter writer = new BufferedWriter(new FileWriter(keyPath));
+
+        String[] keys = new String[KEY_COUNT];
+        for (Integer i = 0; i < keys.length; ++i) {
+            keys[i] = i.toString();
+            writer.write(keys[i] + '\n');
+        }
+
+        writer.flush();
+        writer.close();
+
+        BucketKeyJournal readJournal = new BucketKeyJournal(keyPath, KeyJournal.Mode.READ, TEST_BUCKET);
+
+        int readCount = 0;
+        for (Key key : readJournal) {
+            assertTrue(key.bucket().compareTo(TEST_BUCKET) == 0);
+            assertTrue(keys[readCount].compareTo(key.key()) == 0);
+            if (!key.errorKey())
+                ++readCount;
+        }
+
+        assertTrue(readCount == keys.length);
+    }
 	
 	@Test
-	public void testCreateKeyPathFromPath() {
-		File file = new File("/Users/dankerrigan/data.data");
+	public void testCreateKeyPathFromPath() throws Exception {
+		File file = tempFolder.newFile("data.data");
 		File newPath = KeyJournal.createKeyPathFromPath(file, false);
-		assertTrue(newPath.getAbsolutePath().compareTo("/Users/dankerrigan/data.keys") == 0);
+		assertTrue(newPath.getName().compareTo("data.keys") == 0);
 		newPath = KeyJournal.createKeyPathFromPath(file, true);
-		assertTrue(newPath.getAbsolutePath().compareTo("/Users/dankerrigan/data.loadedkeys") == 0);
+		assertTrue(newPath.getName().compareTo("data.loadedkeys") == 0);
 	}
 	
 

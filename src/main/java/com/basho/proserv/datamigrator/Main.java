@@ -3,6 +3,9 @@ package com.basho.proserv.datamigrator;
 import java.io.File;
 import java.util.Map;
 
+import com.basho.proserv.datamigrator.io.AbstractKeyJournal;
+import com.basho.proserv.datamigrator.io.BucketKeyJournal;
+import com.basho.proserv.datamigrator.io.KeyJournal;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.GnuParser;
@@ -77,6 +80,23 @@ public class Main {
 		if (cmd.hasOption("copy") && (cmd.hasOption('t') || cmd.hasOption('k'))) {
 			System.out.println("Copy not compatible with t or k options.");
 		}
+
+        if (cmd.hasOption("loadkeys") && cmd.hasOption("bucketkeys")) {
+            System.out.println("Cannot combine loadkeys and bucketkeys options.");
+            System.exit(1);
+        }
+
+//        if ((cmd.hasOption("loadkeys") || cmd.hasOption("bucketkeys")) && !cmd.hasOption("r")) {
+//            System.out.println("loadkeys and bucketkeys require an output directory (r option)");
+//        }
+        if ((cmd.hasOption("loadkeys") || cmd.hasOption("bucketkeys")) && cmd.hasOption("l")) {
+            System.out.println("loadkeys and bucketkeys cannot be used with the load (l) option");
+        }
+
+        if ((cmd.hasOption("loadkeys") || cmd.hasOption("bucketkeys")) &&
+                !(cmd.hasOption("d") || cmd.hasOption("copy") | cmd.hasOption("delete"))) {
+            System.out.println("loadkeys and bucketkeys must be used with dump, copy, or delete options (d, copy, delete");
+        }
 		
 		Configuration config = handleCommandLine(cmd);
 		
@@ -92,10 +112,10 @@ public class Main {
 			runLoader(config);
 		}
 
-		if (cmd.hasOption("d") || cmd.hasOption("loadkeys") || (cmd.hasOption("d") && cmd.hasOption("t"))) {
+		if (cmd.hasOption("d") || (cmd.hasOption("d") && cmd.hasOption("t"))) {
 			runDumper(config);
 		}
-		
+
 	}
 	
 	public static Configuration handleCommandLine(CommandLine cmd) {
@@ -183,7 +203,7 @@ public class Main {
 		}
 		
 		// Destination PB port
-		if (cmd.hasOption("copypbport")) {
+		if (cmd.hasOption("copy") && cmd.hasOption("copypbport")) {
 			try {
 				config.setPort(Integer.parseInt(cmd.getOptionValue("copypbport")));
 			} catch (NumberFormatException e) {
@@ -214,13 +234,37 @@ public class Main {
 		if (cmd.hasOption("loadkeys")) {
 			try {
 				String fileName = cmd.getOptionValue("loadkeys");
-				config.addKeyNames(Utilities.readFileLines(fileName));
-				config.setOperation(Configuration.Operation.KEYS);
+                File path = new File(fileName);
+
+                KeyJournal keyJournal = new KeyJournal(path, KeyJournal.Mode.READ);
+
+                config.setKeyJournal(keyJournal);
+
+                config.setOperation(Configuration.Operation.KEYS);
+
+//				config.addKeyNames(Utilities.readFileLines(fileName));
 			} catch (Exception e) {
 				System.out.println("Could not read file containing list of bucket,keys");
 				System.exit(1);
 			}
 		}
+
+        if (cmd.hasOption("bucketkeys")) {
+
+            if (config.getBucketNames().size() == 1) {
+                String fileName = cmd.getOptionValue("bucketkeys");
+                File path = new File(fileName);
+                String bucketName = config.getBucketNames().iterator().next();
+                BucketKeyJournal keyJournal = new BucketKeyJournal(path, KeyJournal.Mode.READ, bucketName);
+
+                config.setKeyJournal(keyJournal);
+
+                config.setOperation(Configuration.Operation.KEYS);
+            } else {
+                System.out.println("bucketkeys only a valid option when specifying a single bucket");
+                System.exit(1);
+            }
+        }
 
 		// Keys only
 		if (cmd.hasOption("k")) { // if keys only....
@@ -254,13 +298,28 @@ public class Main {
 			if (config.getBucketNames().size() > 0) {
 				config.setOperation(Configuration.Operation.DELETE_BUCKETS);
 			}
+            if (cmd.hasOption("bucketkeys") && config.getBucketNames().size() == 1) {
+                config.setOperation(Configuration.Operation.DELETE_KEYS);
+            }
+            if (cmd.hasOption("loadkeys")) {
+                config.setOperation(Configuration.Operation.DELETE_KEYS);
+            }
 		}
-		
+
+        // Subset copy
+        if (cmd.hasOption("copy") && cmd.hasOption("loadkeys")) {
+            config.setOperation(Configuration.Operation.COPY_KEYS);
+        }
+
+        if (cmd.hasOption("copy") && cmd.hasOption("bucketkeys") && config.getBucketNames().size() == 1) {
+            config.setOperation(Configuration.Operation.COPY_KEYS);
+        }
+
 		// Bucket Copy
-		if (cmd.hasOption("copy") && config.getBucketNames().size() > 0) {
+		if (cmd.hasOption("copy") && config.getBucketNames().size() > 0 && !cmd.hasOption("bucketkeys") && !cmd.hasOption("loadkeys")) {
 			config.setOperation(Configuration.Operation.COPY_BUCKETS);
 		}
-		if (cmd.hasOption("copy") && cmd.hasOption("a")) {
+		if (cmd.hasOption("copy") && cmd.hasOption("a") && !cmd.hasOption("bucketkeys")) {
 			config.setOperation(Configuration.Operation.COPY_ALL);
 		}
 		
@@ -327,7 +386,9 @@ public class Main {
 		long deleteCount = 0;
 		if (config.getOperation() == Configuration.Operation.DELETE_BUCKETS) {
 			deleteCount = deleter.deleteBuckets(config.getBucketNames());
-		}
+		} else if (config.getOperation() == Configuration.Operation.DELETE_KEYS) {
+            deleteCount = deleter.deleteKeys(config.getKeyJournal());
+        }
 		
 		connection.close();
 
@@ -410,7 +471,7 @@ public class Main {
 		} else if (config.getOperation() == Configuration.Operation.BUCKET_PROPERTIES) {
 			dumpCount = dumper.dumpBucketSettings(config.getBucketNames());
 		} else if (config.getOperation() == Configuration.Operation.KEYS) {
-			dumpCount = dumper.dumpKeys(config.getKeyNames());
+            dumpCount = dumper.dumpKeys(config.getKeyJournal());
 		} else {
 			dumpCount = dumper.dumpAllBuckets(config.getResume(), keysOnly);
 		}
@@ -454,7 +515,9 @@ public class Main {
 		long transferCount = 0;
 		if (config.getOperation() == Configuration.Operation.COPY_BUCKETS) {
 			transferCount = mover.transferBuckets(config.getBucketNames(), false);
-		} else {
+        } else if (config.getOperation() == Configuration.Operation.COPY_KEYS) {
+            transferCount = mover.transferKeys(config.getKeyJournal());
+        } else {
 			transferCount = mover.transferAllBuckets(false);
 		}
 		
@@ -547,6 +610,7 @@ public class Main {
 		options.addOption("b", true, "Load or Dump a single bucket");
 		options.addOption("f", true, "Load or Dump a file containing bucket names");
 		options.addOption("loadkeys", true, "Load or Dump a file containing bucket names and keys");
+        options.addOption("bucketkeys", true, "Load or Dump a file containing keys. Bucket must be specified");
 		options.addOption("h", true, "Specify Riak Host");
 		options.addOption("c", true, "Specify a file containing Riak Cluster Host Names");
 		options.addOption("p", true, "Specify Riak PB Port");
