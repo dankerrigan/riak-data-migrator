@@ -1,2 +1,4 @@
 .idea
 riak-data-migrator.iml
+.DS_Store
+target

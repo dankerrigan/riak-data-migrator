@@ -210,19 +210,19 @@ public class Main {
 				System.out.println("Destination PB Port (copypbport) argument is not an integer.");
 				System.exit(1);
 			}
-		} else {
+		} else if (cmd.hasOption("copy") && !cmd.hasOption("copypbport")) {
 			System.out.println("Destination PB Port not specified, using the default: 8087");
 		}
 		
 		// Single bucket specifier
 		if (cmd.hasOption("b")) {
-			config.addBucketName(cmd.getOptionValue("b"));
+			config.addBucketName(Utilities.urlDecode(cmd.getOptionValue("b")));
 			config.setOperation(Configuration.Operation.BUCKETS);
 		}
 		// Bucket filename
 		if (cmd.hasOption("f")) {
 			try {
-				config.addBucketNames(Utilities.readFileLines(cmd.getOptionValue("f")));
+				config.addBucketNames(Utilities.urlDecode(Utilities.readFileLines(cmd.getOptionValue("f"))));
 				config.setOperation(Configuration.Operation.BUCKETS);
 			} catch (Exception e) {
 				System.out.println("Could not read file containing buckets");
@@ -328,7 +328,7 @@ public class Main {
 				System.out.println("Destination bucket option only valid when specifying a single bucket.");
 				System.exit(1);
 			}
-			config.setDestinationBucket(cmd.getOptionValue("destinationbucket"));
+			config.setDestinationBucket(Utilities.urlDecode(cmd.getOptionValue("destinationbucket")));
 		}
 		
 		if (cmd.hasOption("q")) {

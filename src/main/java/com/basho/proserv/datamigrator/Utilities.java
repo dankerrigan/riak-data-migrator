@@ -82,5 +82,15 @@ public class Utilities {
 		}
 	}
 
+    public static List<String> urlDecode(Iterable<String> lines) {
+        List<String> decoded = new ArrayList<String>();
+
+        for (String line : lines) {
+            decoded.add(urlDecode(line));
+        }
+
+        return decoded;
+    }
+
 
 }
