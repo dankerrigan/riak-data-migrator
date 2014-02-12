@@ -23,7 +23,7 @@ public class Utilities {
             for (Key key : keyJournal) {
                 String bucketName = key.bucket();
                 if (!journals.containsKey(bucketName)) {
-                    File bucketPath = new File(basePath.getAbsolutePath() + "/" + bucketName);
+                    File bucketPath = new File(basePath.getAbsolutePath() + "/" + Utilities.urlEncode(bucketName));
                     bucketPath.mkdir();
                     File keyFile = new File(bucketPath.getAbsolutePath() + "/bucketkeys.keys");
                     journals.put(key.bucket(), new KeyJournal(keyFile, KeyJournal.Mode.WRITE));
@@ -34,7 +34,7 @@ public class Utilities {
 
             for (String bucketName: journals.keySet()) {
                 journals.get(bucketName).close();
-                File bucketKeys = new File(basePath.getAbsolutePath() + "/" + bucketName + "/" + "bucketkeys.keys");
+                File bucketKeys = new File(basePath.getAbsolutePath() + "/" + Utilities.urlEncode(bucketName) + "/" + "bucketkeys.keys");
                 readJournals.put(bucketName, new KeyJournal(bucketKeys, KeyJournal.Mode.READ));
             }
         } catch (IOException ex) {
