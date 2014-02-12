@@ -4,6 +4,7 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
@@ -12,13 +13,16 @@ import com.basho.riak.client.IRiakObject;
 import com.basho.riak.client.builders.RiakObjectBuilder;
 
 public class BucketDumperLoaderTests {
+    @Rule
+    public TemporaryFolder tempFolderMaker = new TemporaryFolder();
+
 	private final int DEFAULT_WORKER_COUNT = Runtime.getRuntime().availableProcessors() * 2;
 	private String host = "127.0.0.1";
-	private int port = 18087;
-	private int httpPort = 18098;
+	private int port = 8087;
+	private int httpPort = 8098;
 	
 	File dumpDirectory = null;
-	
+
 	public static String[] bucketNames = {"A","B","C","D","E","F"};
 	public static String[] keys = new String[100]; 
 	
@@ -60,8 +64,7 @@ public class BucketDumperLoaderTests {
 		httpConnection.connectHTTPClient(host, httpPort);
 		int count = loadTestData(connection);
 		System.out.println("Loaded " + count + " records");
-		
-		TemporaryFolder tempFolderMaker = new TemporaryFolder();
+
 		dumpDirectory = tempFolderMaker.newFolder();
 		
 		Configuration config = new Configuration();

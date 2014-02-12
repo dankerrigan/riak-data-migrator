@@ -41,18 +41,21 @@ To transfer data from one Riak cluster to another:
     on a bucket.
 3. Export the contents of a bucket (Riak objects) using the ```-d``` option, to files on disk (the objects will be stored in 
     the binary [ProtoBuf](http://docs.basho.com/riak/latest/references/apis/protocol-buffers/) format)
-4. Load the Riak objects from the exported files into the target cluster using the ```-l``` option.
+4. (Optional, Search-only) If backing up Search-indexed buckets using Data Migrator versions <= 0.2.6, go into the exported
+   data directory and delete the internal-use-only indexing buckets (```rm -rf _rsid_*```). See 
+   https://github.com/basho/riak-data-migrator/issues/4 for explanation.
+5. Load the Riak objects from the exported files into the target cluster using the ```-l``` option.
 
 Downloading:
 ------------------------
 You can download the ready to run jar file at:
-http://ps-tools.data.riakcs.net:8080/riak-data-migrator-0.2.4-bin.tar.gz
+http://ps-tools.data.riakcs.net:8080/riak-data-migrator-0.2.6-bin.tar.gz
 
 After downloading, unzip/untar it, and it's ready to run from its directory.
 ```bash
-tar -xvzf riak-data-migrator-0.2.4-bin.tar.gz
-cd riak-data-migrator-0.2.4
-java -jar riak-data-migrator-0.2.4.jar [options]
+tar -xvzf riak-data-migrator-0.2.6-bin.tar.gz
+cd riak-data-migrator-0.2.6
+java -jar riak-data-migrator-0.2.6.jar [options]
 ```
 
 Building from source:
@@ -67,14 +70,16 @@ mvn package
 ```
 
     The compiled .jar file is located in the ```target/``` directory.
-    The usable binary file is ```riak-data-migrator-0.2.4-bin.tar.gz```
+    The usable binary file is ```riak-data-migrator-0.2.6-bin.tar.gz```
 
 Usage:
 ------------------------
 Usage:  
-```java -jar riak-data-migrator-0.2.4.jar [options]```
+
+```java -jar riak-data-migrator-0.2.6.jar [options]```
 
 Options:
+
 ```
 Data Transfer (required, one of: d, l, k, or delete)
 -d Export (Dump) the contents bucket(s) (keys and objects), in ProtoBuf format, to files
@@ -87,7 +92,7 @@ Settings Transfer (optional, used with to -d or -l)
    You must also specify -d to export or -l to import, with this option.
 
 Delete a bucket
---delete Delete bucket data. Cannot be used with -d, -l, -k, or -t. Must be used with -b or -f  
+--delete Delete bucket data. Cannot be used with -d, -l, -k, or -t. Must be used with -b or -f
 
 Path (required)
 -r <path> Set the path for data to be loaded to or dumped from (path must be valid)
@@ -96,6 +101,8 @@ Bucket Options (required for -d, -k or -t)
 -a Export all buckets.
 -b <bucket name> Export a single bucket.  
 -f <bucketNameFile.txt> Export multiple buckets listed in a file (containing line-delimited bucket names)
+--loadkeys <bucketKeyNameFile.txt> Specify multiple keys listed in a file (containing line-delimited bucket,key names). Not functional with the -l option.
+--bucketkeys <keysFiles.txt> Specify keys listed in a line-delimited file in conjunction with the -b option to specify which bucket the keys belong to. Not functional with the -l option.
 
 Cluster Addresses and Ports (required)
 -h <hostName> Specify Riak hostname. Required if a cluster host name file is not specified.  
@@ -115,7 +122,7 @@ Concurrency and Misc Settings
 	at most 2 queues for Load/Dump operations.
 	
 Copy Settings
---copy Set to Copy buckets to one cluster to another. Cannot be used with d, k, l, k or delete.
+--copy Set to Copy buckets from one cluster to another. Cannot be used with d, k, l or delete.
 --copyhost <hostName> Specify destination Riak host for *copy* operation
 --copyhostsfile <clusterNameFile.txt> Specify a file containing Cluster Host Names.  Req'd
     if a single copyhost not specified.
@@ -127,52 +134,105 @@ Copy Settings
 
 Examples:
 -------------------------
+
 Dump (the contents of) all buckets from Riak:  
-```java -jar riak-data-migrator-0.2.4.jar -d -r /var/riak_export -a -h 127.0.0.1 -p 8087 -H 8098```
+
+```
+java -jar riak-data-migrator-0.2.6.jar -d -r /var/riak_export -a -h 127.0.0.1 -p 8087 -H 8098
+```
+
+Dump a subset of keys from Riak:
+
+```
+java -jar riak-data-migrator-0.2.6.jar -d -r /var/riak_export --loadkeys bucketKeyNameFile.txt -h 127.0.0.1 -p 8087 -H 8098
+```
 
 Load all buckets previously dumped back into Riak:  
-```java -jar riak-data-migrator-0.2.4.jar -l -r /var/riak-export -a -h 127.0.0.1 -p 8087 -H 8098```
+
+```
+java -jar riak-data-migrator-0.2.6.jar -l -r /var/riak-export -a -h 127.0.0.1 -p 8087 -H 8098
+```
 
 Dump (the contents of) buckets listed in a line delimited file from a Riak cluster:  
-<pre>
-java -jar riak-data-migrator-0.2.4.jar -d -f /home/riakadmin/buckets_to_export.txt -r \  
+
+```
+java -jar riak-data-migrator-0.2.6.jar -d -f /home/riakadmin/buckets_to_export.txt -r \
 /var/riak-export -c /home/riakadmin/riak_hosts.txt -p 8087 -H 8098
-</pre>
+```
+
+Dump (then contents of) buckets based on the bucket,keys listed in a file, bucket_keys.csv:
+
+```
+java -jar riak-data-migrator-0.2.6.jar -d --loadkeys bucket_keys.txt -r \
+/var/riak-export -c /home/riakadmin/riak_hosts.txt -p 8087 -H 8098
+```
+
+Dump (then contents of) a single bucket, A_BUCKET, based on the keys listed in a file, keys.txt:
+
+```
+java -jar riak-data-migrator-0.2.6.jar -d -b A_BUCKET --bucketkeys keys.txt -r \
+/var/riak-export -c /home/riakadmin/riak_hosts.txt -p 8087 -H 8098
+```
 
 Export only the bucket settings from a bucket named "Flights":  
-```java -jar riak-data-migrator-0.2.4.jar -d -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098```
+
+```
+java -jar riak-data-migrator-0.2.6.jar -d -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098
+```
 
 Load bucket settings for a bucket named "Flights":  
-```java -jar riak-data-migrator-0.2.4.jar -l -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098```
+
+```
+java -jar riak-data-migrator-0.2.6.jar -l -t -r /var/riak-export -b Flights -h 127.0.0.1 -p 8087 -H 8098
+```
 
 Copy all buckets from one riak host to another:
-```java -jar riak-data-migrator-0.2.4.jar -copy -r /var/riak_export -a -h 127.0.0.1 -p 8087 --copyhost 192.168.1.100 --copypbport 8087```
+
+```
+java -jar riak-data-migrator-0.2.6.jar -copy -r /var/riak_export -a -h 127.0.0.1 -p 8087 --copyhost 192.168.1.100 --copypbport 8087
+```
+
+Copy a single bucket (A_BUCKET) to bucket (B_BUCKET) on the same host
+
+```
+java -jar riak-data-migrator-0.2.6.jar -copy -r /var/riak_export -b A_BUCKET -h 127.0.0.1 -p 8087 --copyhost 192.168.1.100 --copypbport 8087 --destinationbucket B_BUCKET
+```
+
 
 Caveats:
 ------------------------
--This app depends on the key listing operation in the Riak client which
+ - When backing up 
+ - This app depends on the key listing operation in the Riak client which
 is slow on a good day.  
--The Riak memory backend bucket listing operating tends to timeout if
+ - The Riak memory backend bucket listing operating tends to timeout if
 any significant amount of data exists.  In this case, you have to
 explicitly specify the buckets you need want to dump using the ```-f```
 option to specify a line-delimited list of buckets in a file.  
 
+
 Version Notes:
 ------------------------
+0.2.6
+ - Subset of keys can now be dumped, copied, or deleted.
+ - In addition to previous capability to specify a file in bucket,key\n format, you can now just have a file with keys
+ as long as a single bucket is also specified
+
+0.2.5
+ - Added option to dump a subset of keys
+
 0.2.4
--Verbose status output is now default
--Added option to turn off verbose output
--Logging of final status
+ - Verbose status output is now default
+ - Added option to turn off verbose output
+ - Logging of final status
 
 0.2.3
--Changed internal message passing between threads from Riak Objects to Events for Dump, Load and Copy operations but not Delete.
--Added the capability to transfer data directly between clusters
--Added the capability to copy a single bucket into a new bucket for the Load or Copy operations.
--Changed log level for retry attempts (but not max retries reached) to warn vs error.
+ - Changed internal message passing between threads from Riak Objects to Events for Dump, Load and Copy operations but not Delete.
+ - Added the capability to transfer data directly between clusters
+ - Added the capability to copy a single bucket into a new bucket for the Load or Copy operations.
+ - Changed log level for retry attempts (but not max retries reached) to warn vs error.
 
 0.2.2
--Changed message passing for Dump partially to Events
--Added logic to count the number of value not founds (ie 404s) when reading
--Added summary output for value not founds
+ - Changed message passing for Dump partially to Events
+ - Added logic to count the number of value not founds (ie 404s) when reading
+ - Added summary output for value not founds
 
-< 0.2.1 Ancient History

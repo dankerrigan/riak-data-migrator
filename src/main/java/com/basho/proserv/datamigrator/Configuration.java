@@ -1,5 +1,7 @@
 package com.basho.proserv.datamigrator;
 
+import com.basho.proserv.datamigrator.io.IKeyJournal;
+
 import java.io.File;
 import java.util.Collection;
 import java.util.HashSet;
@@ -17,11 +19,15 @@ public class Configuration {
 	public static enum Operation { ALL_BUCKETS, 
 								   BUCKETS, 
 								   ALL_KEYS, 
-								   BUCKET_KEYS, 
+								   BUCKET_KEYS,
+								   KEYS,
 								   BUCKET_PROPERTIES,
 								   DELETE_BUCKETS,
+                                   DELETE_KEYS,
 								   COPY_ALL,
-								   COPY_BUCKETS };
+								   COPY_BUCKETS,
+                                   COPY_KEYS
+                                };
 
 	
 	
@@ -39,6 +45,9 @@ public class Configuration {
 	private int queueSize = DEFAULT_QUEUE_SIZE;
 	
 	private Set<String> bucketNames = new HashSet<String>();
+//	private Set<String> keyNames = new HashSet<String>();
+
+    private IKeyJournal keyJournal = null;
 	
 	private boolean verboseStatus = true;
 	private boolean resetVClock = false;
@@ -140,6 +149,21 @@ public class Configuration {
 	public Set<String> getBucketNames() {
 		return this.bucketNames;
 	}
+
+    public void setKeyJournal(IKeyJournal keyJournal) {
+        this.keyJournal = keyJournal;
+    }
+
+    public IKeyJournal getKeyJournal() {
+        return this.keyJournal;
+    }
+
+//	public void addKeyNames(Collection<String> keys) {
+//		this.keyNames.addAll(keys);
+//	}
+//	public Set<String> getKeyNames() {
+//		return this.keyNames;
+//	}
 	
 	public void setVerboseStatus(boolean verboseStatus) {
 		this.verboseStatus = verboseStatus;

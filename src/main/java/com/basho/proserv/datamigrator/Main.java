@@ -3,6 +3,9 @@ package com.basho.proserv.datamigrator;
 import java.io.File;
 import java.util.Map;
 
+import com.basho.proserv.datamigrator.io.AbstractKeyJournal;
+import com.basho.proserv.datamigrator.io.BucketKeyJournal;
+import com.basho.proserv.datamigrator.io.KeyJournal;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.GnuParser;
@@ -77,6 +80,23 @@ public class Main {
 		if (cmd.hasOption("copy") && (cmd.hasOption('t') || cmd.hasOption('k'))) {
 			System.out.println("Copy not compatible with t or k options.");
 		}
+
+        if (cmd.hasOption("loadkeys") && cmd.hasOption("bucketkeys")) {
+            System.out.println("Cannot combine loadkeys and bucketkeys options.");
+            System.exit(1);
+        }
+
+//        if ((cmd.hasOption("loadkeys") || cmd.hasOption("bucketkeys")) && !cmd.hasOption("r")) {
+//            System.out.println("loadkeys and bucketkeys require an output directory (r option)");
+//        }
+        if ((cmd.hasOption("loadkeys") || cmd.hasOption("bucketkeys")) && cmd.hasOption("l")) {
+            System.out.println("loadkeys and bucketkeys cannot be used with the load (l) option");
+        }
+
+        if ((cmd.hasOption("loadkeys") || cmd.hasOption("bucketkeys")) &&
+                !(cmd.hasOption("d") || cmd.hasOption("copy") | cmd.hasOption("delete"))) {
+            System.out.println("loadkeys and bucketkeys must be used with dump, copy, or delete options (d, copy, delete");
+        }
 		
 		Configuration config = handleCommandLine(cmd);
 		
@@ -92,17 +112,17 @@ public class Main {
 			runLoader(config);
 		}
 
-		if (cmd.hasOption("d") || cmd.hasOption("k") || (cmd.hasOption("d") && cmd.hasOption("t"))) {
+		if (cmd.hasOption("d") || (cmd.hasOption("d") && cmd.hasOption("t"))) {
 			runDumper(config);
 		}
-		
+
 	}
 	
 	public static Configuration handleCommandLine(CommandLine cmd) {
 		Configuration config = new Configuration();
 		
 		// Data path
-		if (!cmd.hasOption("copy")) {
+		if (!cmd.hasOption("copy") && !cmd.hasOption("delete")) {
 			if (cmd.hasOption("r")) {
 				File dataPath = new File(cmd.getOptionValue("r"));
 				if (!dataPath.exists()) {
@@ -167,7 +187,7 @@ public class Main {
 				System.exit(1);
 			}
 		} else {
-			System.out.println("Port not specified, using the default: 8087");
+			System.out.println("PB Port not specified, using the default: 8087");
 		}
 		
 		// HTTP Port
@@ -183,44 +203,81 @@ public class Main {
 		}
 		
 		// Destination PB port
-		if (cmd.hasOption("copypbport")) {
+		if (cmd.hasOption("copy") && cmd.hasOption("copypbport")) {
 			try {
 				config.setPort(Integer.parseInt(cmd.getOptionValue("copypbport")));
 			} catch (NumberFormatException e) {
 				System.out.println("Destination PB Port (copypbport) argument is not an integer.");
 				System.exit(1);
 			}
-		} else {
+		} else if (cmd.hasOption("copy") && !cmd.hasOption("copypbport")) {
 			System.out.println("Destination PB Port not specified, using the default: 8087");
 		}
 		
 		// Single bucket specifier
 		if (cmd.hasOption("b")) {
-			config.addBucketName(cmd.getOptionValue("b"));
+			config.addBucketName(Utilities.urlDecode(cmd.getOptionValue("b")));
 			config.setOperation(Configuration.Operation.BUCKETS);
 		}
 		// Bucket filename
 		if (cmd.hasOption("f")) {
 			try {
-				config.addBucketNames(Utilities.readFileLines(cmd.getOptionValue("f")));
+				config.addBucketNames(Utilities.urlDecode(Utilities.readFileLines(cmd.getOptionValue("f"))));
 				config.setOperation(Configuration.Operation.BUCKETS);
 			} catch (Exception e) {
 				System.out.println("Could not read file containing buckets");
 				System.exit(1);
 			}
 		}
+
+		// Dump from a list of buckets/keys
+		if (cmd.hasOption("loadkeys")) {
+			try {
+				String fileName = cmd.getOptionValue("loadkeys");
+                File path = new File(fileName);
+
+                KeyJournal keyJournal = new KeyJournal(path, KeyJournal.Mode.READ);
+
+                config.setKeyJournal(keyJournal);
+
+                config.setOperation(Configuration.Operation.KEYS);
+
+//				config.addKeyNames(Utilities.readFileLines(fileName));
+			} catch (Exception e) {
+				System.out.println("Could not read file containing list of bucket,keys");
+				System.exit(1);
+			}
+		}
+
+        if (cmd.hasOption("bucketkeys")) {
+
+            if (config.getBucketNames().size() == 1) {
+                String fileName = cmd.getOptionValue("bucketkeys");
+                File path = new File(fileName);
+                String bucketName = config.getBucketNames().iterator().next();
+                BucketKeyJournal keyJournal = new BucketKeyJournal(path, KeyJournal.Mode.READ, bucketName);
+
+                config.setKeyJournal(keyJournal);
+
+                config.setOperation(Configuration.Operation.KEYS);
+            } else {
+                System.out.println("bucketkeys only a valid option when specifying a single bucket");
+                System.exit(1);
+            }
+        }
+
 		// Keys only
 		if (cmd.hasOption("k")) { // if keys only....
 			config.setOperation(Configuration.Operation.BUCKET_KEYS);
 		}
 
 		// Bucket properties transfer
-		if (cmd.hasOption("t")) { // if transfer buckets, no compatible with k
+		if (cmd.hasOption("t")) { // if transfer buckets, not compatible with k
 			config.setOperation(Configuration.Operation.BUCKET_PROPERTIES);
 		}
 		
 		
-		if (config.getBucketNames().size() == 0 && !cmd.hasOption("a")) {
+		if (config.getBucketNames().size() == 0 && !cmd.hasOption("a") && !cmd.hasOption("loadkeys")) {
 			System.out.println("No buckets specified to load");
 			System.exit(1);
 		}
@@ -241,13 +298,28 @@ public class Main {
 			if (config.getBucketNames().size() > 0) {
 				config.setOperation(Configuration.Operation.DELETE_BUCKETS);
 			}
+            if (cmd.hasOption("bucketkeys") && config.getBucketNames().size() == 1) {
+                config.setOperation(Configuration.Operation.DELETE_KEYS);
+            }
+            if (cmd.hasOption("loadkeys")) {
+                config.setOperation(Configuration.Operation.DELETE_KEYS);
+            }
 		}
-		
+
+        // Subset copy
+        if (cmd.hasOption("copy") && cmd.hasOption("loadkeys")) {
+            config.setOperation(Configuration.Operation.COPY_KEYS);
+        }
+
+        if (cmd.hasOption("copy") && cmd.hasOption("bucketkeys") && config.getBucketNames().size() == 1) {
+            config.setOperation(Configuration.Operation.COPY_KEYS);
+        }
+
 		// Bucket Copy
-		if (cmd.hasOption("copy") && config.getBucketNames().size() > 0) {
+		if (cmd.hasOption("copy") && config.getBucketNames().size() > 0 && !cmd.hasOption("bucketkeys") && !cmd.hasOption("loadkeys")) {
 			config.setOperation(Configuration.Operation.COPY_BUCKETS);
 		}
-		if (cmd.hasOption("copy") && cmd.hasOption("a")) {
+		if (cmd.hasOption("copy") && cmd.hasOption("a") && !cmd.hasOption("bucketkeys")) {
 			config.setOperation(Configuration.Operation.COPY_ALL);
 		}
 		
@@ -256,7 +328,7 @@ public class Main {
 				System.out.println("Destination bucket option only valid when specifying a single bucket.");
 				System.exit(1);
 			}
-			config.setDestinationBucket(cmd.getOptionValue("destinationbucket"));
+			config.setDestinationBucket(Utilities.urlDecode(cmd.getOptionValue("destinationbucket")));
 		}
 		
 		if (cmd.hasOption("q")) {
@@ -314,7 +386,9 @@ public class Main {
 		long deleteCount = 0;
 		if (config.getOperation() == Configuration.Operation.DELETE_BUCKETS) {
 			deleteCount = deleter.deleteBuckets(config.getBucketNames());
-		}
+		} else if (config.getOperation() == Configuration.Operation.DELETE_KEYS) {
+            deleteCount = deleter.deleteKeys(config.getKeyJournal());
+        }
 		
 		connection.close();
 
@@ -396,6 +470,8 @@ public class Main {
 			dumpCount = dumper.dumpBuckets(config.getBucketNames(), config.getResume(), keysOnly);
 		} else if (config.getOperation() == Configuration.Operation.BUCKET_PROPERTIES) {
 			dumpCount = dumper.dumpBucketSettings(config.getBucketNames());
+		} else if (config.getOperation() == Configuration.Operation.KEYS) {
+            dumpCount = dumper.dumpKeys(config.getKeyJournal());
 		} else {
 			dumpCount = dumper.dumpAllBuckets(config.getResume(), keysOnly);
 		}
@@ -439,7 +515,9 @@ public class Main {
 		long transferCount = 0;
 		if (config.getOperation() == Configuration.Operation.COPY_BUCKETS) {
 			transferCount = mover.transferBuckets(config.getBucketNames(), false);
-		} else {
+        } else if (config.getOperation() == Configuration.Operation.COPY_KEYS) {
+            transferCount = mover.transferKeys(config.getKeyJournal());
+        } else {
 			transferCount = mover.transferAllBuckets(false);
 		}
 		
@@ -531,6 +609,8 @@ public class Main {
 		options.addOption("a", false, "Load or Dump all buckets");
 		options.addOption("b", true, "Load or Dump a single bucket");
 		options.addOption("f", true, "Load or Dump a file containing bucket names");
+		options.addOption("loadkeys", true, "Load or Dump a file containing bucket names and keys");
+        options.addOption("bucketkeys", true, "Load or Dump a file containing keys. Bucket must be specified");
 		options.addOption("h", true, "Specify Riak Host");
 		options.addOption("c", true, "Specify a file containing Riak Cluster Host Names");
 		options.addOption("p", true, "Specify Riak PB Port");
