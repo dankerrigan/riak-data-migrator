@@ -185,7 +185,7 @@ public class Main {
 		// Destination PB port
 		if (cmd.hasOption("copypbport")) {
 			try {
-				config.setPort(Integer.parseInt(cmd.getOptionValue("copypbport")));
+				config.setDestinationPort(Integer.parseInt(cmd.getOptionValue("copypbport")));
 			} catch (NumberFormatException e) {
 				System.out.println("Destination PB Port (copypbport) argument is not an integer.");
 				System.exit(1);
